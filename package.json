@@ -1,5 +1,5 @@
 {
-  "name": "knowledge-mcp",
+  "name": "@spothlynx/knowledge-mcp",
   "version": "0.1.0",
   "description": "Centralized project knowledge management via Model Context Protocol",
   "type": "module",
@@ -8,6 +8,11 @@
   "bin": {
     "knowledge-mcp": "dist/knowledge-mcp/index.js"
   },
+  "files": [
+    "dist/**/*",
+    "README.md",
+    "LICENCE"
+  ],
   "scripts": {
     "build": "tsc",
     "dev": "tsx watch src/knowledge-mcp/index.ts",
@@ -24,16 +29,31 @@
     "analyze": "pnpm run type-check && pnpm run lint && pnpm run format:check",
     "analyze:fix": "pnpm run type-check && pnpm run lint:fix && pnpm run format",
     "check:all": "pnpm run analyze",
-    "fix:all": "pnpm run analyze:fix"
+    "fix:all": "pnpm run analyze:fix",
+    "prepublishOnly": "pnpm run clean && pnpm run build && pnpm run test:interface"
   },
   "keywords": [
     "mcp",
     "knowledge",
     "project-management",
-    "model-context-protocol"
+    "model-context-protocol",
+    "typescript",
+    "claude",
+    "ai"
   ],
-  "author": "",
+  "author": {
+    "name": "spothlynx",
+    "url": "https://github.com/sven-borkert"
+  },
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sven-borkert/knowledge-mcp.git"
+  },
+  "bugs": {
+    "url": "https://github.com/sven-borkert/knowledge-mcp/issues"
+  },
+  "homepage": "https://github.com/sven-borkert/knowledge-mcp#readme",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.0",
     "front-matter": "^4.0.2",
