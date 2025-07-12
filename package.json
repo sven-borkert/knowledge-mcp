@@ -15,6 +15,7 @@
   ],
   "scripts": {
     "build": "tsc",
+    "postbuild": "chmod +x dist/knowledge-mcp/index.js",
     "dev": "tsx watch src/knowledge-mcp/index.ts",
     "start": "node dist/knowledge-mcp/index.js",
     "clean": "rm -rf dist",
