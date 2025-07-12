@@ -19,6 +19,16 @@ A Model Context Protocol (MCP) server that provides centralized knowledge manage
 - Node.js 18+
 - Git (for project identification and version control)
 
+### From npm (Recommended)
+
+```bash
+# Install globally
+npm install -g @spothlynx/knowledge-mcp
+
+# Or for Claude Code users
+claude mcp add knowledge-mcp npx -y @spothlynx/knowledge-mcp
+```
+
 ### From Source
 
 ```bash
@@ -46,8 +56,8 @@ Add to your Claude Desktop configuration (`~/Library/Application Support/Claude/
 {
   "mcpServers": {
     "knowledge": {
-      "command": "node",
-      "args": ["/path/to/knowledge-mcp/dist/knowledge-mcp/index.js"],
+      "command": "npx",
+      "args": ["@spothlynx/knowledge-mcp"],
       "env": {
         "KNOWLEDGE_MCP_HOME": "~/.knowledge-mcp"
       }
@@ -56,10 +66,70 @@ Add to your Claude Desktop configuration (`~/Library/Application Support/Claude/
 }
 ```
 
+### Claude Code (Recommended)
+
+If you're using Claude Code, the MCP server is automatically configured when you install it with:
+
+```bash
+claude mcp add knowledge-mcp npx -y @spothlynx/knowledge-mcp
+```
+
 ### Environment Variables
 
 - `KNOWLEDGE_MCP_HOME`: Storage directory (default: `~/.knowledge-mcp`)
 - `KNOWLEDGE_MCP_LOG_LEVEL`: Log level (default: `INFO`)
+
+## Claude Code Integration
+
+For optimal Claude Code integration, add this snippet to your personal CLAUDE.md file (`~/.claude/CLAUDE.md` or `~/.config/claude/CLAUDE.md`):
+
+```markdown
+# Knowledge MCP Integration
+
+## Using Knowledge MCP Server
+
+This project uses the Knowledge MCP Server for centralized knowledge management. 
+
+### Getting Started
+1. Always start by checking existing project knowledge:
+   ```
+   Use get_project_main to retrieve current project instructions
+   ```
+
+2. Search existing knowledge before asking questions:
+   ```
+   Use search_knowledge to find relevant documentation
+   ```
+
+3. When you learn something new about the project, save it:
+   ```
+   Use create_knowledge_file or update_chapter to document insights
+   ```
+
+### Best Practices
+- **Check first**: Use get_project_main before starting any work
+- **Search**: Use search_knowledge to find existing solutions
+- **Document**: Save important learnings for future reference
+- **Organize**: Use chapters to structure complex topics
+
+The Knowledge MCP replaces traditional CLAUDE.md files with a centralized, searchable knowledge base.
+```
+
+## Quick Start
+
+After installation, the Knowledge MCP Server automatically manages your project knowledge:
+
+1. **First Use**: Navigate to any project directory and the server will identify it
+2. **Get Instructions**: Use `get_project_main` to retrieve existing project knowledge
+3. **Search Knowledge**: Use `search_knowledge` to find relevant information
+4. **Add Knowledge**: Use `create_knowledge_file` to document new learnings
+5. **Update Content**: Use `update_chapter` to modify existing documentation
+
+All knowledge is automatically:
+- ✅ Stored in `~/.knowledge-mcp/projects/{project-name}/`
+- ✅ Version controlled with Git
+- ✅ Searchable across all documents
+- ✅ Organized with structured chapters
 
 ## Usage
 
@@ -238,6 +308,28 @@ Transient errors are automatically retried with exponential backoff:
 - `GIT_ERROR` - Git operation failed (auto-retry)
 
 See [Error Handling Guide](docs/error-handling-guide.md) for complete documentation.
+
+## Updates & Versioning
+
+The Knowledge MCP Server is actively maintained with frequent updates:
+
+### Updating
+
+```bash
+# Update to latest version
+npm update -g @spothlynx/knowledge-mcp
+
+# For Claude Code users
+claude mcp update knowledge-mcp
+```
+
+### Version Strategy
+
+- **Patch versions** (0.1.x): Bug fixes, performance improvements
+- **Minor versions** (0.x.0): New features, enhancements  
+- **Major versions** (x.0.0): Breaking changes
+
+Check the [changelog](https://github.com/sven-borkert/knowledge-mcp/releases) for detailed release notes.
 
 ## Contributing
 
