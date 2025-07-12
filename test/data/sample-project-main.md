@@ -49,19 +49,6 @@ knowledge-mcp/
 │       ├── index.ts           # Entry point
 │       ├── server.ts          # MCP server implementation
 │       ├── utils.ts           # Security & utility functions
-│       ├── utils/
-│       │   ├── tracing.ts     # Request tracing utilities
-│       │   └── retry.ts       # Retry mechanism with backoff
-│       ├── errors/
-│       │   ├── index.ts       # Error exports
-│       │   └── MCPError.ts    # Standardized error class
-│       ├── handlers/
-│       │   ├── BaseHandler.ts # Base handler with error handling
-│       │   ├── ProjectToolHandler.ts
-│       │   ├── KnowledgeToolHandler.ts
-│       │   ├── SearchToolHandler.ts
-│       │   ├── ChapterToolHandler.ts
-│       │   └── ResourceHandler.ts
 │       ├── projectId.ts       # Git project identification
 │       └── documents.ts       # Document operations
 ├── dist/                      # Compiled JavaScript (git-ignored)
@@ -89,78 +76,6 @@ knowledge-mcp/
 - **Always** add type annotations to function signatures
 - **Never** place imports inside functions or methods
 - **Use** type imports when only importing types: `import type { TypeName } from './module.js'`
-
----
-
-## 🔥 ERROR HANDLING & DEBUGGING
-
-### Standardized Error System
-
-The project uses a comprehensive error handling system with:
-
-- **Typed Error Codes**: All errors use standardized `MCPErrorCode` enum values
-- **Request Tracing**: Every request gets a unique trace ID for debugging
-- **Automatic Retries**: Transient errors are retried with exponential backoff
-- **Consistent Responses**: All errors return the same response structure
-
-### Error Response Format
-
-```json
-{
-  "success": false,
-  "error": "Human-readable error message",
-  "code": "ERROR_CODE",
-  "context": {
-    "traceId": "unique-request-id",
-    "project_id": "affected-project",
-    "timestamp": "2024-01-01T12:00:00Z"
-  }
-}
-```
-
-### Common Error Codes
-
-- `PROJECT_NOT_FOUND` - Project doesn't exist
-- `DOCUMENT_NOT_FOUND` - Knowledge file not found
-- `FILE_ALREADY_EXISTS` - File already exists
-- `FILE_SYSTEM_ERROR` - File operation failed (automatically retried)
-- `GIT_ERROR` - Git operation failed (automatically retried)
-- `INVALID_INPUT` - Input validation failed
-
-### Error Handling Best Practices
-
-```typescript
-// ✅ GOOD: Use MCPError with proper code and context
-throw new MCPError(MCPErrorCode.PROJECT_NOT_FOUND, `Project ${projectId} not found`, {
-  projectId,
-  traceId: context.traceId,
-});
-
-// ❌ BAD: Generic error without context
-throw new Error('Project not found');
-```
-
-### Debugging with Trace IDs
-
-- All log entries include trace IDs
-- Error responses include trace IDs in context
-- Use trace ID to correlate logs: `grep "traceId" ~/.knowledge-mcp/activity.log`
-- Request duration tracked for performance debugging
-
-### Retry Configuration
-
-```typescript
-// Automatically retried errors:
-- FILE_SYSTEM_ERROR (file operations)
-- GIT_ERROR (git commands)
-- STORAGE_ERROR (storage operations)
-
-// Retry settings:
-- Max attempts: 3
-- Initial delay: 100ms
-- Max delay: 5000ms
-- Backoff: 2x multiplier
-```
 
 ---
 

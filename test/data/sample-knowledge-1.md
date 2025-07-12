@@ -330,84 +330,25 @@ Lists all chapters in a specific knowledge file.
 
 ### Error Handling
 
-The TypeScript implementation uses a standardized error handling system with typed error codes, request tracing, and automatic retry mechanisms.
-
-#### Error Response Format
-
-All errors return a consistent response structure:
+The TypeScript implementation returns errors as part of the tool response content:
 
 ```json
 {
   "success": false,
-  "error": "Human-readable error message",
-  "code": "ERROR_CODE",
-  "context": {
-    "traceId": "unique-request-id",
-    "project_id": "affected-project",
-    "filename": "affected-file",
-    "timestamp": "2024-01-01T12:00:00Z",
-    "...additional context..."
-  }
+  "error": "Error message here"
 }
 ```
 
-#### Error Codes
+Common error scenarios:
 
-The system uses typed error codes for consistent error handling:
-
-- `UNKNOWN_ERROR` - Unexpected errors
-- `INTERNAL_ERROR` - Internal server errors
-- `INVALID_INPUT` - Invalid input parameters
-- `INVALID_PROJECT_ID` - Invalid project identifier
-- `INVALID_FILENAME` - Invalid filename format
-- `INVALID_PATH` - Path validation failed
-- `INVALID_CONTENT` - Content validation failed
-- `NOT_FOUND` - Generic resource not found
-- `PROJECT_NOT_FOUND` - Project doesn't exist
-- `DOCUMENT_NOT_FOUND` - Knowledge document not found
-- `CHAPTER_NOT_FOUND` - Chapter not found (case-sensitive)
-- `SECTION_NOT_FOUND` - Section not found in main.md
-- `FILE_SYSTEM_ERROR` - File system operation failed
-- `ACCESS_DENIED` - Permission denied
-- `FILE_ALREADY_EXISTS` - File already exists
-- `GIT_ERROR` - Git operation failed
-- `GIT_COMMAND_FAILED` - Git command execution failed
-- `SEARCH_ERROR` - Search operation failed
-- `INVALID_SEARCH_QUERY` - Invalid search query format
-- `RATE_LIMIT_EXCEEDED` - Too many requests
-- `STORAGE_ERROR` - Storage operation failed
-- `STORAGE_INITIALIZATION_FAILED` - Storage initialization failed
-
-#### Request Tracing
-
-Every request is assigned a unique trace ID for debugging:
-
-- Trace IDs are generated using cryptographically secure random bytes
-- All log entries include the trace ID
-- Error responses include the trace ID in context
-- Request duration is tracked and logged
-
-#### Automatic Retry Mechanism
-
-Transient errors are automatically retried with exponential backoff:
-
-- **Retryable errors**: `FILE_SYSTEM_ERROR`, `GIT_ERROR`, `STORAGE_ERROR`
-- **Max attempts**: 3 (configurable)
-- **Initial delay**: 100ms
-- **Max delay**: 5000ms
-- **Backoff multiplier**: 2x
-- **File system specific**: EAGAIN, EBUSY, EMFILE, ENFILE errors are retried
-
-#### Error Logging
-
-All errors are logged with full context:
-
-- Error code and message
-- Request trace ID
-- Request duration
-- Method parameters (excluding sensitive data)
-- Stack traces for debugging
-- Original error details for wrapped errors
+- Project not found
+- Knowledge file not found
+- Chapter not found (case-sensitive match required)
+- Invalid file/chapter name (failed validation)
+- Git operation failed
+- File I/O error
+- Invalid frontmatter/metadata
+- Missing required fields (e.g., empty keywords array)
 
 ## Activity Logging
 
@@ -433,29 +374,21 @@ Activity logs are stored at: `~/.knowledge-mcp/activity.log`
   "success": true,
   "project_id": "my-project",
   "filename": "api-guide.md",
-  "chapter_title": "Authentication",
-  "traceId": "ab462321ed4c1d33399b20bf504af8f2",
-  "duration": 45,
-  "errorCode": "FILE_ALREADY_EXISTS",
-  "errorContext": { "...": "..." }
+  "chapter_title": "Authentication"
 }
 ```
 
 ### Logged Fields
 
-| Field           | Type    | Description                                        |
-| --------------- | ------- | -------------------------------------------------- |
-| `timestamp`     | string  | ISO 8601 timestamp of the method call              |
-| `method`        | string  | Name of the MCP tool called                        |
-| `success`       | boolean | Whether the operation succeeded                    |
-| `project_id`    | string  | Project identifier (when applicable)               |
-| `filename`      | string  | Knowledge file name (when applicable)              |
-| `chapter_title` | string  | Chapter name for chapter operations                |
-| `error`         | string  | Error message (only when success=false)            |
-| `traceId`       | string  | Unique request identifier for tracing              |
-| `duration`      | number  | Request duration in milliseconds                   |
-| `errorCode`     | string  | Standardized error code (only when success=false)  |
-| `errorContext`  | object  | Additional error context (only when success=false) |
+| Field           | Type    | Description                             |
+| --------------- | ------- | --------------------------------------- |
+| `timestamp`     | string  | ISO 8601 timestamp of the method call   |
+| `method`        | string  | Name of the MCP tool called             |
+| `success`       | boolean | Whether the operation succeeded         |
+| `project_id`    | string  | Project identifier (when applicable)    |
+| `filename`      | string  | Knowledge file name (when applicable)   |
+| `chapter_title` | string  | Chapter name for chapter operations     |
+| `error`         | string  | Error message (only when success=false) |
 
 ### Privacy Protection
 

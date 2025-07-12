@@ -1,0 +1,59 @@
+import type { z } from 'zod';
+
+import { searchDocuments } from '../documents.js';
+import type { SearchResult } from '../documents.js';
+import type { secureProjectIdSchema, secureSearchQuerySchema } from '../schemas/validation.js';
+import { getProjectDirectory } from '../utils.js';
+
+import { BaseHandler } from './BaseHandler.js';
+
+export class SearchToolHandler extends BaseHandler {
+  /**
+   * Search knowledge documents
+   */
+  searchKnowledge(params: {
+    project_id: z.infer<typeof secureProjectIdSchema>;
+    query: z.infer<typeof secureSearchQuerySchema>;
+  }): string {
+    try {
+      const { project_id, query } = params;
+      const [, projectPath] = getProjectDirectory(this.storagePath, project_id);
+
+      // Parse search keywords
+      const keywords = query
+        .toLowerCase()
+        .split(/\s+/)
+        .filter((k) => k.length > 0);
+
+      // Search documents - pass projectPath, not knowledgePath
+      const results = searchDocuments(projectPath, keywords.join(' '));
+
+      // Transform results for response - matching test expectations
+      const transformedResults = results.map((result: SearchResult) => ({
+        document: result.file,
+        chapters: result.matching_chapters.map((ch) => ({
+          title: ch.chapter || '(Document Introduction)',
+          matches: ch.keywords_found.length,
+        })),
+      }));
+
+      this.logSuccess('search_knowledge', { project_id });
+      return this.formatSuccessResponse({
+        total_documents: transformedResults.length,
+        total_matches: results.reduce((sum, r) => sum + r.match_count, 0),
+        results: transformedResults,
+      });
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      this.logError(
+        'search_knowledge',
+        {
+          project_id: params.project_id,
+          query: params.query,
+        },
+        errorMsg
+      );
+      return this.formatErrorResponse(errorMsg);
+    }
+  }
+}

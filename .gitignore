@@ -1,51 +1,54 @@
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-build/
-develop-eggs/
+# Node.js / TypeScript
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# TypeScript build output
 dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-.pytest_cache/
-.coverage
-htmlcov/
-.tox/
-.venv/
-venv/
-ENV/
-.env
+*.js
+*.js.map
+*.d.ts
+*.d.ts.map
+# Keep TypeScript source files
+!src/**/*.ts
+
+# Package manager files (keep for reproducible builds)
+# package-lock.json  # not needed with pnpm
+# yarn.lock          # not needed with pnpm
+# pnpm-lock.yaml     # keep for reproducible builds
+
+# Testing
+coverage/
+.nyc_output/
+
+# Cache
+.npm
+.pnpm-store/
+.eslintcache
+.cache/
+
+# IDE
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
+
+# OS
 .DS_Store
+Thumbs.db
 
 # SSH environment
 .sshenv
 
-# Code quality tool temporary directories
-.mypy_cache/
-.ruff_cache/
-.pylint_cache/
-.black_cache/
-
-# Node.js
-node_modules/
-npm-debug.log*
-package-lock.json
+# Environment
+.env
+.env.local
 
 # MCP configuration
 .mcp.json
+
+# Temporary files
+*.tmp
+*.temp

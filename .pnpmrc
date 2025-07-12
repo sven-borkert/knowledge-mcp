@@ -1,0 +1,5 @@
+# pnpm configuration file
+# This file ensures consistent behavior across environments
+
+# Ensure pnpm uses the workspace
+enable-pre-post-scripts=true
