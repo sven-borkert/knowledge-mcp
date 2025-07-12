@@ -2,6 +2,7 @@
 // @ts-nocheck
 
 import { join } from 'path';
+import { rmSync, existsSync } from 'fs';
 
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
@@ -80,23 +81,29 @@ class MCPInterfaceTest {
   private client: Client;
   private results: TestResult[] = [];
   private readonly TEST_PROJECT = 'test-project-1';
+  private readonly testDirectory: string;
 
   constructor() {
     this.client = new Client({
       name: 'test-client',
       version: '1.0.0',
     });
+    
+    const homeDir = process.env.HOME ?? process.env.USERPROFILE ?? '/tmp';
+    this.testDirectory = join(homeDir, '.knowledge-mcp-test-ts');
   }
 
   async connect(): Promise<void> {
+    // Clean up any existing test data before starting
+    this.cleanup();
+    
     const serverPath = join(process.cwd(), 'dist', 'knowledge-mcp', 'index.js');
-    const homeDir = process.env.HOME ?? process.env.USERPROFILE ?? '/tmp';
     const transport = new StdioClientTransport({
       command: 'node',
       args: [serverPath],
       env: {
         ...process.env,
-        KNOWLEDGE_MCP_HOME: join(homeDir, '.knowledge-mcp-test-ts'),
+        KNOWLEDGE_MCP_HOME: this.testDirectory,
       },
     });
 
@@ -520,7 +527,7 @@ class MCPInterfaceTest {
     }
   }
 
-  printSummary(): void {
+  printSummary(): boolean {
     const passed = this.results.filter((r) => r.passed).length;
     const total = this.results.length;
 
@@ -543,29 +550,43 @@ class MCPInterfaceTest {
         });
     }
 
-    // Exit with appropriate code
-    process.exit(passed === total ? 0 : 1);
+    return passed === total;
   }
 
   async disconnect(): Promise<void> {
     await this.client.close();
     console.log('\n👋 Disconnected from MCP server');
   }
+
+  cleanup(showMessage: boolean = false): void {
+    try {
+      if (existsSync(this.testDirectory)) {
+        rmSync(this.testDirectory, { recursive: true, force: true });
+        if (showMessage) {
+          console.log('🧹 Cleaned up test directory');
+        }
+      }
+    } catch (error) {
+      console.warn(`⚠️  Failed to clean up test directory: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
 }
 
 // Run the tests
 async function main(): Promise<void> {
   const tester = new MCPInterfaceTest();
+  let allTestsPassed = false;
 
   try {
     await tester.connect();
     await tester.runTests();
-    tester.printSummary();
+    allTestsPassed = tester.printSummary();
   } catch (error) {
     console.error('Test runner error:', error);
-    process.exit(1);
   } finally {
     await tester.disconnect();
+    tester.cleanup(true);
+    process.exit(allTestsPassed ? 0 : 1);
   }
 }
 
