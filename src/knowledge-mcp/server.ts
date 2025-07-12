@@ -148,7 +148,9 @@ Returns: {success: bool, document_id?: str, message?: str, error?: str}`,
         'Desired filename (will be slugified, .md extension optional)'
       ),
       title: secureTitleSchema.describe('Human-readable document title for the metadata'),
-      introduction: secureIntroductionSchema.describe('Opening text that appears before any chapters'),
+      introduction: secureIntroductionSchema.describe(
+        'Opening text that appears before any chapters'
+      ),
       keywords: z.array(secureKeywordSchema).min(1).describe('List of searchable keywords'),
       chapters: z
         .array(
@@ -263,7 +265,9 @@ Returns: {success: bool, message?: str, error?: str}`,
       new_content: secureChapterContentSchema.describe(
         'New content for the chapter (without ## heading)'
       ),
-      new_summary: secureChapterSummarySchema.optional().describe('Optional chapter summary for search results'),
+      new_summary: secureChapterSummarySchema
+        .optional()
+        .describe('Optional chapter summary for search results'),
     },
   },
   ({ project_id, filename, chapter_title, new_content, new_summary }) => ({

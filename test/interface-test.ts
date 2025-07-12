@@ -1,8 +1,8 @@
 #!/usr/bin/env tsx
 // @ts-nocheck
 
-import { join } from 'path';
 import { rmSync, existsSync } from 'fs';
+import { join } from 'path';
 
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
@@ -88,7 +88,7 @@ class MCPInterfaceTest {
       name: 'test-client',
       version: '1.0.0',
     });
-    
+
     const homeDir = process.env.HOME ?? process.env.USERPROFILE ?? '/tmp';
     this.testDirectory = join(homeDir, '.knowledge-mcp-test-ts');
   }
@@ -96,7 +96,7 @@ class MCPInterfaceTest {
   async connect(): Promise<void> {
     // Clean up any existing test data before starting
     this.cleanup();
-    
+
     const serverPath = join(process.cwd(), 'dist', 'knowledge-mcp', 'index.js');
     const transport = new StdioClientTransport({
       command: 'node',
@@ -567,7 +567,9 @@ class MCPInterfaceTest {
         }
       }
     } catch (error) {
-      console.warn(`⚠️  Failed to clean up test directory: ${error instanceof Error ? error.message : String(error)}`);
+      console.warn(
+        `⚠️  Failed to clean up test directory: ${error instanceof Error ? error.message : String(error)}`
+      );
     }
   }
 }

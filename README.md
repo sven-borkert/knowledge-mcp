@@ -26,7 +26,7 @@ A Model Context Protocol (MCP) server that provides centralized knowledge manage
 npm install -g @spothlynx/knowledge-mcp
 
 # Or for Claude Code users
-claude mcp add knowledge-mcp npx -y @spothlynx/knowledge-mcp
+claude mcp add knowledge-mcp npx @spothlynx/knowledge-mcp
 ```
 
 ### From Source
@@ -42,7 +42,10 @@ pnpm install
 # Build the TypeScript code
 pnpm run build
 
-# Run the server
+# For Claude Code users - add using local build
+claude mcp add knowledge-mcp node "$(pwd)/dist/knowledge-mcp/index.js"
+
+# Or run the server directly
 pnpm start
 ```
 
@@ -71,7 +74,7 @@ Add to your Claude Desktop configuration (`~/Library/Application Support/Claude/
 If you're using Claude Code, the MCP server is automatically configured when you install it with:
 
 ```bash
-claude mcp add knowledge-mcp npx -y @spothlynx/knowledge-mcp
+claude mcp add knowledge-mcp npx @spothlynx/knowledge-mcp
 ```
 
 ### Environment Variables
@@ -88,23 +91,30 @@ For optimal Claude Code integration, add this snippet to your personal CLAUDE.md
 
 ## Using Knowledge MCP Server
 
-This project uses the Knowledge MCP Server for centralized knowledge management. 
+This project uses the Knowledge MCP Server for centralized knowledge management.
 
 ### Getting Started
+
 1. Always start by checking existing project knowledge:
-   ```
-   Use get_project_main to retrieve current project instructions
-   ```
+```
+
+Use get_project_main to retrieve current project instructions
+
+```
 
 2. Search existing knowledge before asking questions:
-   ```
-   Use search_knowledge to find relevant documentation
-   ```
+```
+
+Use search_knowledge to find relevant documentation
+
+```
 
 3. When you learn something new about the project, save it:
-   ```
-   Use create_knowledge_file or update_chapter to document insights
-   ```
+```
+
+Use create_knowledge_file or update_chapter to document insights
+
+```
 
 ### Best Practices
 - **Check first**: Use get_project_main before starting any work
@@ -126,6 +136,7 @@ After installation, the Knowledge MCP Server automatically manages your project 
 5. **Update Content**: Use `update_chapter` to modify existing documentation
 
 All knowledge is automatically:
+
 - ✅ Stored in `~/.knowledge-mcp/projects/{project-name}/`
 - ✅ Version controlled with Git
 - ✅ Searchable across all documents
@@ -309,6 +320,74 @@ Transient errors are automatically retried with exponential backoff:
 
 See [Error Handling Guide](docs/error-handling-guide.md) for complete documentation.
 
+## Troubleshooting
+
+### MCP Server Fails to Start
+
+If you see errors like `spawn npx -y @spothlynx/knowledge-mcp ENOENT` or `Connection closed`:
+
+1. **Check command format**: The `-y` flag is not supported by Claude Code
+
+   ```bash
+   # ❌ Wrong
+   claude mcp add knowledge-mcp npx -y @spothlynx/knowledge-mcp
+
+   # ✅ Correct
+   claude mcp add knowledge-mcp npx @spothlynx/knowledge-mcp
+   ```
+
+2. **Use local build for development** (recommended):
+
+   ```bash
+   # From the project directory
+   claude mcp add knowledge-mcp node "$(pwd)/dist/knowledge-mcp/index.js"
+   ```
+
+3. **If npm package fails with "command not found"**:
+   ```bash
+   # The npm package might have permission issues, use local build instead:
+   claude mcp remove knowledge-mcp
+   claude mcp add knowledge-mcp node "/path/to/knowledge-mcp/dist/knowledge-mcp/index.js"
+   ```
+
+4. **Check MCP logs**:
+   ```bash
+   # View logs for debugging
+   ls ~/Library/Caches/claude-cli-nodejs/*/mcp-logs-knowledge-mcp/
+   ```
+
+### Permission Errors
+
+If you encounter permission errors:
+
+1. **Ensure storage directory exists**:
+
+   ```bash
+   mkdir -p ~/.knowledge-mcp
+   ```
+
+2. **Check file permissions**:
+   ```bash
+   ls -la ~/.knowledge-mcp
+   ```
+
+### Build Errors
+
+If TypeScript build fails:
+
+1. **Clean and rebuild**:
+
+   ```bash
+   pnpm run clean
+   pnpm install
+   pnpm run build
+   ```
+
+2. **Check Node version**:
+   ```bash
+   node --version  # Should be 18+
+   ```
+
 ## Updates & Versioning
 
 The Knowledge MCP Server is actively maintained with frequent updates:
@@ -326,7 +405,7 @@ claude mcp update knowledge-mcp
 ### Version Strategy
 
 - **Patch versions** (0.1.x): Bug fixes, performance improvements
-- **Minor versions** (0.x.0): New features, enhancements  
+- **Minor versions** (0.x.0): New features, enhancements
 - **Major versions** (x.0.0): Breaking changes
 
 Check the [changelog](https://github.com/sven-borkert/knowledge-mcp/releases) for detailed release notes.
@@ -361,7 +440,7 @@ npm whoami
 # For bug fixes and small improvements
 npm run publish:patch    # 0.1.0 → 0.1.1
 
-# For new features and enhancements  
+# For new features and enhancements
 npm run publish:minor    # 0.1.0 → 0.2.0
 
 # For breaking changes
@@ -378,7 +457,7 @@ npm version patch|minor|major
 
 # 2. Build and test (automatic via prepublishOnly)
 pnpm run clean
-pnpm run build  
+pnpm run build
 pnpm run test:interface
 
 # 3. Publish to npm
