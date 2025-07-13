@@ -1,5 +1,7 @@
+import { readFileSync } from 'fs';
 import { homedir } from 'os';
 import { join, resolve } from 'path';
+import { fileURLToPath } from 'url';
 
 // Configuration from environment
 export const STORAGE_PATH = resolve(
@@ -29,10 +31,39 @@ export const logger = {
   },
 };
 
+// Get package version dynamically
+let packageVersion = '0.0.0-unknown';
+try {
+  // Get the directory of this file
+  const __filename = fileURLToPath(import.meta.url);
+  const __dirname = resolve(__filename, '..');
+
+  // Look for package.json in various locations
+  const possiblePaths = [
+    resolve(__dirname, '../../../package.json'), // Development: src/knowledge-mcp/config -> root
+    resolve(__dirname, '../../package.json'), // Installed: dist/knowledge-mcp -> root
+    resolve(__dirname, '../package.json'), // Alternative structure
+  ];
+
+  for (const pkgPath of possiblePaths) {
+    try {
+      const packageData = JSON.parse(readFileSync(pkgPath, 'utf8')) as { version?: string };
+      if (packageData.version) {
+        packageVersion = packageData.version;
+        break;
+      }
+    } catch {
+      // Try next path
+    }
+  }
+} catch (error) {
+  console.error('Failed to read package version:', error);
+}
+
 // Server metadata
 export const SERVER_CONFIG = {
   name: 'Knowledge MCP Server',
-  version: '0.1.0',
+  version: packageVersion,
   description: `🚀 KNOWLEDGE MCP: Project-Specific Instructions & Knowledge Management
 
 ⚠️  CRITICAL: This MCP REPLACES project CLAUDE.md files. You MUST use it at the start of EVERY project conversation.

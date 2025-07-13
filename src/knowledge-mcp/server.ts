@@ -8,6 +8,7 @@ import { KnowledgeToolHandler } from './handlers/KnowledgeToolHandler.js';
 import { ProjectToolHandler } from './handlers/ProjectToolHandler.js';
 import { ResourceHandler } from './handlers/ResourceHandler.js';
 import { SearchToolHandler } from './handlers/SearchToolHandler.js';
+import { ServerToolHandler } from './handlers/ServerToolHandler.js';
 import {
   secureProjectIdSchema,
   secureContentSchema,
@@ -29,6 +30,7 @@ const knowledgeHandler = new KnowledgeToolHandler();
 const searchHandler = new SearchToolHandler();
 const chapterHandler = new ChapterToolHandler();
 const resourceHandler = new ResourceHandler();
+const serverHandler = new ServerToolHandler();
 
 // Initialize server
 const server = new McpServer(SERVER_CONFIG);
@@ -309,6 +311,61 @@ Returns: {success: bool, message?: str, error?: str}`,
   })
 );
 
+// Server tools
+server.registerTool(
+  'get_server_info',
+  {
+    title: 'Get Server Information',
+    description: `Shows server information including version from package.json.
+Returns: {success: bool, name: str, version: str, storage_path: str, description: str}`,
+    inputSchema: {},
+  },
+  () => ({
+    content: [
+      {
+        type: 'text',
+        text: serverHandler.getServerInfo(),
+      },
+    ],
+  })
+);
+
+server.registerTool(
+  'get_storage_status',
+  {
+    title: 'Get Storage Status',
+    description: `Shows git status of the knowledge datastore.
+Returns: {success: bool, storage_path: str, has_changes: bool, current_branch: str, last_commit: str, remote_status: str, uncommitted_files: int, status_details: str}`,
+    inputSchema: {},
+  },
+  () => ({
+    content: [
+      {
+        type: 'text',
+        text: serverHandler.getStorageStatus(),
+      },
+    ],
+  })
+);
+
+server.registerTool(
+  'sync_storage',
+  {
+    title: 'Sync Storage',
+    description: `Force git add, commit, and push all changes in the knowledge datastore.
+Returns: {success: bool, message: str, files_committed: int, pushed: bool, push_error?: str, commit_message: str}`,
+    inputSchema: {},
+  },
+  () => ({
+    content: [
+      {
+        type: 'text',
+        text: serverHandler.syncStorage(),
+      },
+    ],
+  })
+);
+
 // Register resources
 server.registerResource(
   'main',
@@ -353,7 +410,7 @@ export async function main(): Promise<void> {
 
   const transport = new StdioServerTransport();
   await server.connect(transport);
-  logger.info('Knowledge MCP Server running on stdio');
+  logger.info(`Knowledge MCP Server v${SERVER_CONFIG.version} running on stdio`);
 }
 
 // Entry point

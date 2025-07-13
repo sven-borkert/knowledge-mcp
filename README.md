@@ -39,6 +39,7 @@ IMPORTANT: This system uses the Knowledge MCP Server for project knowledge.
 4. For all subsequent work, use the MCP as the single source of truth
 
 ## Key Commands:
+
 - get_project_main - Get project instructions (ALWAYS START HERE)
 - search_knowledge - Find information before asking questions
 - create_knowledge_file - Document new learnings
@@ -96,6 +97,7 @@ For Claude Desktop users, add to `~/Library/Application Support/Claude/claude_de
 ### Automatic Project Identification
 
 The Knowledge MCP automatically identifies your project based on:
+
 - **Git repositories**: Uses the repository name from git remote URL
 - **Non-git directories**: Uses the current directory name
 
@@ -129,6 +131,7 @@ cd ~/projects/my-app
 ### Automatic Backup
 
 The Knowledge MCP automatically backs up your knowledge:
+
 1. All changes are committed to a local Git repository
 2. If you configure a remote repository, changes are pushed automatically
 3. To enable cloud backup:
@@ -141,18 +144,18 @@ The Knowledge MCP automatically backs up your knowledge:
 
 ### Core Tools
 
-| Tool | Purpose | Usage |
-|------|---------|-------|
-| `get_project_main` | Get project instructions | Always call first |
-| `update_project_main` | Create/update instructions | Migrate CLAUDE.md |
-| `update_project_section` | Update specific section | Efficient updates |
-| `remove_project_section` | Remove section | Clean up outdated info |
-| `search_knowledge` | Search all documents | Find before asking |
-| `create_knowledge_file` | Create knowledge doc | Document learnings |
-| `update_chapter` | Update chapter | Refine documentation |
-| `remove_chapter` | Remove chapter | Clean up docs |
-| `get_knowledge_file` | Get full document | Export/backup |
-| `delete_knowledge_file` | Delete document | Remove obsolete docs |
+| Tool                     | Purpose                    | Usage                  |
+| ------------------------ | -------------------------- | ---------------------- |
+| `get_project_main`       | Get project instructions   | Always call first      |
+| `update_project_main`    | Create/update instructions | Migrate CLAUDE.md      |
+| `update_project_section` | Update specific section    | Efficient updates      |
+| `remove_project_section` | Remove section             | Clean up outdated info |
+| `search_knowledge`       | Search all documents       | Find before asking     |
+| `create_knowledge_file`  | Create knowledge doc       | Document learnings     |
+| `update_chapter`         | Update chapter             | Refine documentation   |
+| `remove_chapter`         | Remove chapter             | Clean up docs          |
+| `get_knowledge_file`     | Get full document          | Export/backup          |
+| `delete_knowledge_file`  | Delete document            | Remove obsolete docs   |
 
 ### Resources (Read-Only)
 
@@ -191,6 +194,7 @@ The Knowledge MCP automatically backs up your knowledge:
 ### Common Issues
 
 1. **"spawn npx ENOENT" or "Connection closed"**
+
    ```bash
    # Remove and re-add without the -y flag
    claude mcp remove knowledge-mcp
@@ -198,16 +202,18 @@ The Knowledge MCP automatically backs up your knowledge:
    ```
 
 2. **Permission errors**
+
    ```bash
    # Ensure storage directory exists
    mkdir -p ~/.knowledge-mcp
    ```
 
 3. **Check logs for debugging**
+
    ```bash
    # View MCP logs
    ls ~/Library/Caches/claude-cli-nodejs/*/mcp-logs-knowledge-mcp/
-   
+
    # View activity logs with trace IDs
    tail -f ~/.knowledge-mcp/activity.log
    ```

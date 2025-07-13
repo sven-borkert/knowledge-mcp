@@ -410,9 +410,7 @@ export function pushToOrigin(repoPath: string): void {
     gitCommand(repoPath, 'push', 'origin', 'main');
   } catch (error) {
     // Log error but don't fail the operation
-    console.error(
-      `Git push failed: ${error instanceof Error ? error.message : String(error)}`
-    );
+    console.error(`Git push failed: ${error instanceof Error ? error.message : String(error)}`);
   }
 }
 
@@ -430,7 +428,7 @@ export function autoCommit(repoPath: string, message: string): void {
     if (stdout.trim()) {
       // Commit changes
       gitCommand(repoPath, 'commit', '-m', message);
-      
+
       // Push to origin if it exists
       if (hasGitRemote(repoPath)) {
         pushToOrigin(repoPath);
@@ -760,9 +758,7 @@ export async function pushToOriginAsync(repoPath: string): Promise<void> {
     await gitCommandAsync(repoPath, 'push', 'origin', 'main');
   } catch (error) {
     // Log error but don't fail the operation
-    console.error(
-      `Git push failed: ${error instanceof Error ? error.message : String(error)}`
-    );
+    console.error(`Git push failed: ${error instanceof Error ? error.message : String(error)}`);
   }
 }
 
@@ -781,7 +777,7 @@ export async function autoCommitAsync(repoPath: string, message: string): Promis
     if (stdout.trim()) {
       // Commit changes
       await gitCommandAsync(repoPath, 'commit', '-m', message);
-      
+
       // Push to origin if it exists
       if (await hasGitRemoteAsync(repoPath)) {
         await pushToOriginAsync(repoPath);
