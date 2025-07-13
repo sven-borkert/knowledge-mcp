@@ -140,6 +140,45 @@ The Knowledge MCP automatically backs up your knowledge:
    git remote add origin YOUR_GITHUB_REPO_URL
    ```
 
+## 🔗 Git Remote Setup (Recommended)
+
+Setting up a git remote enables automatic cloud backup and synchronization across devices:
+
+### Step 1: Create a Remote Repository
+
+Create a new repository on GitHub, GitLab, or your preferred git hosting service.
+
+### Step 2: Configure the Remote
+
+```bash
+cd ~/.knowledge-mcp
+git remote add origin https://github.com/yourusername/knowledge-mcp-backup.git
+git push -u origin main
+```
+
+### Step 3: Set Up Authentication
+
+Ensure your git credentials are configured for automatic push/pull:
+
+```bash
+# For GitHub with token
+git config credential.helper store
+# Then push once to store credentials
+
+# Or use SSH keys (recommended)
+git remote set-url origin git@github.com:yourusername/knowledge-mcp-backup.git
+```
+
+### Startup Synchronization
+
+⚠️ **Important**: On every startup, the Knowledge MCP will:
+
+1. **Pull** the latest changes from `origin/main`
+2. **Overwrite** any local changes with remote content
+3. Continue with normal operations
+
+This ensures your knowledge stays synchronized across devices but **local changes will be lost** if not pushed to the remote repository.
+
 ## 🛠️ Available Tools
 
 ### Core Tools
@@ -150,12 +189,16 @@ The Knowledge MCP automatically backs up your knowledge:
 | `update_project_main`    | Create/update instructions | Migrate CLAUDE.md      |
 | `update_project_section` | Update specific section    | Efficient updates      |
 | `remove_project_section` | Remove section             | Clean up outdated info |
+| `delete_project`         | Delete entire project      | Permanent removal      |
 | `search_knowledge`       | Search all documents       | Find before asking     |
 | `create_knowledge_file`  | Create knowledge doc       | Document learnings     |
 | `update_chapter`         | Update chapter             | Refine documentation   |
 | `remove_chapter`         | Remove chapter             | Clean up docs          |
 | `get_knowledge_file`     | Get full document          | Export/backup          |
 | `delete_knowledge_file`  | Delete document            | Remove obsolete docs   |
+| `get_server_info`        | Get server information     | Check version/status   |
+| `get_storage_status`     | Get git storage status     | Monitor repository     |
+| `sync_storage`           | Force git sync             | Manual backup/push     |
 
 ### Resources (Read-Only)
 

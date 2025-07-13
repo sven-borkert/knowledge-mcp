@@ -17,6 +17,8 @@ import {
   autoCommitAsync,
   validatePath,
   validatePathAsync,
+  deleteProjectDirectory,
+  deleteProjectDirectoryAsync,
 } from '../utils.js';
 
 import { BaseHandler } from './BaseHandler.js';
@@ -585,6 +587,94 @@ export class ProjectToolHandler extends BaseHandler {
         mcpError,
         context
       );
+      return this.formatErrorResponse(mcpError, context);
+    }
+  }
+
+  /**
+   * Delete project and all its content
+   */
+  deleteProject(params: z.infer<typeof secureProjectIdSchema>): string {
+    const context = this.createContext('delete_project', { project_id: params });
+
+    try {
+      const project_id = params;
+
+      // Use the utility function to delete the project
+      deleteProjectDirectory(this.storagePath, project_id);
+
+      // Auto-commit the deletion
+      autoCommit(this.storagePath, `Delete project: ${project_id}`);
+
+      const result = {
+        project_id,
+        message: `Project '${project_id}' successfully deleted`,
+      };
+
+      this.logSuccess('delete_project', { project_id }, context);
+      return this.formatSuccessResponse(result);
+    } catch (error) {
+      const mcpError =
+        error instanceof Error && error.message.includes('not found')
+          ? new MCPError(MCPErrorCode.PROJECT_NOT_FOUND, `Project '${params}' not found`, {
+              project_id: params,
+              traceId: context.traceId,
+            })
+          : new MCPError(
+              MCPErrorCode.PROJECT_DELETE_FAILED,
+              `Failed to delete project '${params}': ${error instanceof Error ? error.message : String(error)}`,
+              {
+                project_id: params,
+                traceId: context.traceId,
+                originalError: error,
+              }
+            );
+
+      this.logError('delete_project', { project_id: params }, mcpError, context);
+      return this.formatErrorResponse(mcpError, context);
+    }
+  }
+
+  /**
+   * Async version of deleteProject
+   */
+  async deleteProjectAsync(params: z.infer<typeof secureProjectIdSchema>): Promise<string> {
+    const context = this.createContext('delete_project', { project_id: params });
+
+    try {
+      const project_id = params;
+
+      // Use the async utility function to delete the project
+      await deleteProjectDirectoryAsync(this.storagePath, project_id);
+
+      // Auto-commit the deletion
+      await autoCommitAsync(this.storagePath, `Delete project: ${project_id}`);
+
+      const result = {
+        project_id,
+        message: `Project '${project_id}' successfully deleted`,
+      };
+
+      await this.logSuccessAsync('delete_project', { project_id }, context);
+      return this.formatSuccessResponse(result);
+    } catch (error) {
+      const mcpError =
+        error instanceof Error && error.message.includes('not found')
+          ? new MCPError(MCPErrorCode.PROJECT_NOT_FOUND, `Project '${params}' not found`, {
+              project_id: params,
+              traceId: context.traceId,
+            })
+          : new MCPError(
+              MCPErrorCode.PROJECT_DELETE_FAILED,
+              `Failed to delete project '${params}': ${error instanceof Error ? error.message : String(error)}`,
+              {
+                project_id: params,
+                traceId: context.traceId,
+                originalError: error,
+              }
+            );
+
+      await this.logErrorAsync('delete_project', { project_id: params }, mcpError, context);
       return this.formatErrorResponse(mcpError, context);
     }
   }

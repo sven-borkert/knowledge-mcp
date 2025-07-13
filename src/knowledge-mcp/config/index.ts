@@ -104,6 +104,13 @@ export const SERVER_CONFIG = {
 - remove_chapter: Remove chapters from knowledge docs completely
 - delete_knowledge_file: Remove knowledge documents
 
+❌ WHAT NOT TO UPLOAD TO KNOWLEDGE MCP:
+- README files (repository browsing, not AI context)
+- Index/TOC files (MCP provides built-in listing & search)
+- Navigation files (knowledge files are auto-searchable)
+- Documentation overviews (focus on specific actionable knowledge)
+The MCP server provides automatic file listing, search functionality, and chapter-level navigation, making index files redundant and creating unnecessary noise.
+
 🎯 EFFICIENCY PATTERNS:
 - ALWAYS call get_project_main first - this replaces reading local CLAUDE.md
 - Migrate local CLAUDE.md to MCP immediately when project doesn't exist

@@ -280,6 +280,110 @@ Removes a knowledge document.
 }
 ```
 
+#### 8. `delete_project`
+
+Permanently deletes a project and all its content including the project directory and removes it from the index mapping.
+
+⚠️ **Warning**: This action cannot be undone. Use with caution.
+
+**Input:**
+
+```json
+{
+  "project_id": "string"
+}
+```
+
+**Output:**
+
+```json
+{
+  "success": true,
+  "project_id": "original-project-id",
+  "message": "Project 'original-project-id' successfully deleted"
+}
+```
+
+**Error Cases:**
+
+- `PROJECT_NOT_FOUND`: Project doesn't exist in index
+- `PROJECT_DELETE_FAILED`: Filesystem operation failed
+- `GIT_ERROR`: Git commit failed
+
+#### 9. `get_server_info`
+
+Shows server information including version from package.json.
+
+**Input:**
+
+```json
+{}
+```
+
+**Output:**
+
+```json
+{
+  "success": true,
+  "name": "Knowledge MCP Server",
+  "version": "0.2.2",
+  "storage_path": "/Users/username/.knowledge-mcp",
+  "description": "Centralized project knowledge management via Model Context Protocol"
+}
+```
+
+#### 10. `get_storage_status`
+
+Shows git status of the knowledge datastore.
+
+**Input:**
+
+```json
+{}
+```
+
+**Output:**
+
+```json
+{
+  "success": true,
+  "storage_path": "/Users/username/.knowledge-mcp",
+  "has_changes": false,
+  "current_branch": "main",
+  "last_commit": "Update knowledge for my-app: Created api-guide.md",
+  "remote_status": "origin/main (up to date)",
+  "uncommitted_files": 0,
+  "status_details": ""
+}
+```
+
+#### 11. `sync_storage`
+
+Force git add, commit, and push all changes in the knowledge datastore.
+
+**Input:**
+
+```json
+{}
+```
+
+**Output:**
+
+```json
+{
+  "success": true,
+  "message": "Storage synchronized successfully",
+  "files_committed": 3,
+  "pushed": true,
+  "commit_message": "Sync storage: 3 files updated"
+}
+```
+
+**Error Cases:**
+
+- `GIT_ERROR`: Git operations failed
+- `FILE_SYSTEM_ERROR`: File access issues
+
 ### Resources (Read-Only)
 
 #### 1. `knowledge://projects/{project_id}/main`
@@ -355,23 +459,35 @@ All errors return a consistent response structure:
 
 The system uses typed error codes for consistent error handling:
 
+**General Errors:**
 - `UNKNOWN_ERROR` - Unexpected errors
 - `INTERNAL_ERROR` - Internal server errors
+
+**Validation Errors:**
 - `INVALID_INPUT` - Invalid input parameters
 - `INVALID_PROJECT_ID` - Invalid project identifier
 - `INVALID_FILENAME` - Invalid filename format
 - `INVALID_PATH` - Path validation failed
 - `INVALID_CONTENT` - Content validation failed
+
+**Resource Errors:**
 - `NOT_FOUND` - Generic resource not found
 - `PROJECT_NOT_FOUND` - Project doesn't exist
 - `DOCUMENT_NOT_FOUND` - Knowledge document not found
 - `CHAPTER_NOT_FOUND` - Chapter not found (case-sensitive)
 - `SECTION_NOT_FOUND` - Section not found in main.md
+
+**File System Errors:**
 - `FILE_SYSTEM_ERROR` - File system operation failed
 - `ACCESS_DENIED` - Permission denied
 - `FILE_ALREADY_EXISTS` - File already exists
+- `PROJECT_DELETE_FAILED` - Project deletion failed
+
+**Git Errors:**
 - `GIT_ERROR` - Git operation failed
 - `GIT_COMMAND_FAILED` - Git command execution failed
+
+**Search Errors:**
 - `SEARCH_ERROR` - Search operation failed
 - `INVALID_SEARCH_QUERY` - Invalid search query format
 
@@ -540,6 +656,23 @@ tail -10 activity.log | jq .
 
 ### Git Integration
 
+The Knowledge MCP Server implements comprehensive Git integration for version control and synchronization:
+
+#### Startup Behavior
+
+On server startup, the following Git operations are performed:
+
+- **Git Repository Initialization**: Creates `.git` repository if it doesn't exist
+- **Remote Sync**: If a git remote "origin" is configured:
+  - Performs `git fetch origin main`
+  - Executes `git reset --hard origin/main` to sync with remote
+  - **⚠️ Warning**: Local changes are overwritten to prevent merge conflicts
+  - Failures are logged but don't prevent server startup
+- **Gitignore Management**: Updates `.gitignore` to exclude system files and logs
+- **Cleanup**: Removes newly ignored files from git tracking
+
+#### Write Operations
+
 Every write operation triggers a Git commit and optional push:
 
 - **Commit Format**: `"Update knowledge for {project-id}: {operation}"`
@@ -554,6 +687,13 @@ Every write operation triggers a Git commit and optional push:
   - Requires user to have appropriate git credentials configured
   - Network failures don't affect local functionality
 
+#### Error Handling
+
+- **Network Issues**: All git operations gracefully handle network failures
+- **Authentication**: Failed authentication logs warnings but doesn't break functionality
+- **Offline Mode**: Server works fully when remote is unavailable
+- **Logging**: All git operations are logged with appropriate severity levels
+
 ### Server Configuration
 
 The TypeScript server is initialized with clear instructions about its purpose:
@@ -561,7 +701,7 @@ The TypeScript server is initialized with clear instructions about its purpose:
 ```typescript
 const server = new McpServer({
   name: 'Knowledge MCP Server',
-  version: '0.1.0',
+  version: '0.2.2',
   description: `IMPORTANT: This Knowledge MCP server ONLY replaces the project's CLAUDE.md. 
 It does NOT replace CLAUDE.local.md or ~/.claude/CLAUDE.md - those must 
 still be used as usual.
@@ -584,7 +724,7 @@ The TypeScript implementation includes comprehensive automated tests:
 
 ### Interface Tests (`test/interface-test.ts`)
 
-- **15 core tests** covering all MCP operations
+- **20 comprehensive tests** covering all MCP operations
 - Tests run against the compiled server using MCP client SDK
 - 100% test pass rate validates API compatibility
 
@@ -594,9 +734,11 @@ Test categories:
    - Create, retrieve, update projects
    - Handle non-existent projects
 
-2. **Knowledge Documents** (2 tests)
+2. **Knowledge Documents** (4 tests)
    - Create structured documents
    - Handle special characters in filenames
+   - Get full knowledge documents
+   - Handle non-existent documents
 
 3. **Search Operations** (2 tests)
    - Single/multiple keyword search
@@ -612,6 +754,11 @@ Test categories:
 
 6. **Resource Endpoints** (3 tests)
    - List files, chapters, read main
+
+7. **Server Management** (3 tests)
+   - Get server information
+   - Get storage status
+   - Sync storage operations
 
 ### Running Tests
 

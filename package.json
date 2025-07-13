@@ -1,6 +1,6 @@
 {
   "name": "@spothlynx/knowledge-mcp",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Centralized project knowledge management via Model Context Protocol",
   "type": "module",
   "main": "dist/knowledge-mcp/index.js",
@@ -11,7 +11,7 @@
   "files": [
     "dist/**/*",
     "README.md",
-    "LICENCE"
+    "LICENSE"
   ],
   "scripts": {
     "build": "tsc",

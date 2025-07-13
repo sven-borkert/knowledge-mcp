@@ -135,6 +135,28 @@ Returns: {success: bool, message?: str, error?: str}`,
   })
 );
 
+server.registerTool(
+  'delete_project',
+  {
+    title: 'Delete Project',
+    description: `Permanently delete a project and all its content.
+This removes the entire project directory and removes it from the index.
+This action cannot be undone - use with caution.
+Returns: {success: bool, project_id: str, message: str, error?: str}`,
+    inputSchema: {
+      project_id: secureProjectIdSchema.describe('The project identifier to delete'),
+    },
+  },
+  ({ project_id }) => ({
+    content: [
+      {
+        type: 'text',
+        text: projectHandler.deleteProject(project_id),
+      },
+    ],
+  })
+);
+
 // Knowledge file tools
 server.registerTool(
   'create_knowledge_file',

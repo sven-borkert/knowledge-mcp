@@ -20,18 +20,97 @@
 
 ## Common Error Codes
 
+### General Errors
+
 | Code                  | Description                        | Example                                      |
 | --------------------- | ---------------------------------- | -------------------------------------------- |
-| `PROJECT_NOT_FOUND`   | Project doesn't exist              | `get_project_main` for non-existent project  |
-| `DOCUMENT_NOT_FOUND`  | Knowledge file not found           | `get_knowledge_file` for missing file        |
-| `CHAPTER_NOT_FOUND`   | Chapter not found (case-sensitive) | `update_chapter` with wrong title            |
-| `SECTION_NOT_FOUND`   | Section not found in main.md       | `update_project_section` with missing header |
-| `FILE_ALREADY_EXISTS` | File already exists                | `create_knowledge_file` with existing name   |
-| `FILE_SYSTEM_ERROR`   | File operation failed              | Temporary file lock, disk full               |
-| `GIT_ERROR`           | Git operation failed               | Git command failure                          |
+| `UNKNOWN_ERROR`       | Unexpected system error            | Uncaught exception or system failure         |
+| `INTERNAL_ERROR`      | Internal server error              | Server logic or dependency failure           |
+
+### Validation Errors
+
+| Code                  | Description                        | Example                                      |
+| --------------------- | ---------------------------------- | -------------------------------------------- |
 | `INVALID_INPUT`       | Input validation failed            | Missing required fields                      |
+| `INVALID_PROJECT_ID`  | Invalid project identifier         | Empty or malformed project ID                |
+| `INVALID_FILENAME`    | Invalid filename format            | Filename with illegal characters             |
 | `INVALID_PATH`        | Path validation failed             | Directory traversal attempt                  |
+| `INVALID_CONTENT`     | Content validation failed          | Malformed markdown or invalid structure      |
+
+### Resource Errors
+
+| Code                  | Description                        | Example                                      |
+| --------------------- | ---------------------------------- | -------------------------------------------- |
+| `NOT_FOUND`           | Generic resource not found         | Requested resource doesn't exist             |
+| `PROJECT_NOT_FOUND`   | Project doesn't exist              | `get_project_main` for non-existent project |
+| `DOCUMENT_NOT_FOUND`  | Knowledge file not found           | `get_knowledge_file` for missing file       |
+| `CHAPTER_NOT_FOUND`   | Chapter not found (case-sensitive) | `update_chapter` with wrong title           |
+| `SECTION_NOT_FOUND`   | Section not found in main.md       | `update_project_section` with missing header|
+
+### File System Errors
+
+| Code                  | Description                        | Example                                      |
+| --------------------- | ---------------------------------- | -------------------------------------------- |
+| `FILE_SYSTEM_ERROR`   | File operation failed              | Temporary file lock, disk full              |
 | `ACCESS_DENIED`       | Permission denied                  | No write permissions                         |
+| `FILE_ALREADY_EXISTS` | File already exists                | `create_knowledge_file` with existing name  |
+| `PROJECT_DELETE_FAILED`| Project deletion failed           | Unable to remove project directory          |
+
+### Git Errors
+
+| Code                  | Description                        | Example                                      |
+| --------------------- | ---------------------------------- | -------------------------------------------- |
+| `GIT_ERROR`           | Git operation failed               | Git repository corruption                    |
+| `GIT_COMMAND_FAILED`  | Git command execution failed       | Git command returned non-zero exit code     |
+
+### Search Errors
+
+| Code                  | Description                        | Example                                      |
+| --------------------- | ---------------------------------- | -------------------------------------------- |
+| `SEARCH_ERROR`        | Search operation failed            | Search index corruption or failure          |
+| `INVALID_SEARCH_QUERY`| Invalid search query format        | Empty query or malformed search terms       |
+
+## Git Pull Errors
+
+Git pull operations during startup may fail but don't interrupt server functionality. These are logged as warnings:
+
+### Network-Related Issues
+
+- **DNS Resolution Failures**: Cannot resolve git remote hostname
+- **Connection Timeouts**: Network timeout during fetch operation
+- **Certificate Issues**: SSL/TLS certificate validation failures
+- **Firewall Blocks**: Corporate firewall blocking git protocol
+
+### Authentication Issues
+
+- **Invalid Credentials**: Username/password authentication failed
+- **SSH Key Issues**: SSH key not found or invalid permissions
+- **Token Expiration**: GitHub/GitLab personal access token expired
+- **Permission Denied**: No read access to remote repository
+
+### Repository Issues
+
+- **Remote Not Found**: Git remote "origin" not configured
+- **Branch Not Found**: Remote "main" branch doesn't exist
+- **Force Push Conflicts**: Remote history has been rewritten
+- **Empty Repository**: Remote repository has no commits
+
+### Handling Pull Failures
+
+When git pull fails during startup:
+
+1. **Warning is logged** - Operation failure is recorded in server logs
+2. **Server continues** - MCP server starts normally despite pull failure
+3. **Local operation** - Server works with existing local knowledge
+4. **Auto-retry** - Next server restart will attempt pull again
+
+Example log entries:
+
+```
+No git remote configured, skipping pull
+Pulling latest changes from origin/main...
+Git pull failed: fatal: unable to access 'https://github.com/user/repo.git/': Could not resolve host: github.com
+```
 
 ## Debugging with Trace IDs
 

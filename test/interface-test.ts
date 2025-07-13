@@ -63,6 +63,27 @@ interface GetKnowledgeFileResponse extends ToolResponse {
   };
 }
 
+interface GetServerInfoResponse extends ToolResponse {
+  name: string;
+  version: string;
+  storage_path: string;
+  description: string;
+}
+
+interface GetStorageStatusResponse extends ToolResponse {
+  storage_path: string;
+  has_changes: boolean;
+  current_branch: string;
+  status_details: string;
+}
+
+interface SyncStorageResponse extends ToolResponse {
+  message: string;
+  files_committed: number;
+  pushed: boolean;
+  commit_message?: string;
+}
+
 // Generic test expectation type
 interface TestExpectation<T = unknown> {
   expected: T;
@@ -492,6 +513,76 @@ class MCPInterfaceTest {
       return {
         expected: { hasContent: true },
         actual: { hasContent: content.includes('Test Project 1') },
+      };
+    });
+
+    // Test 7.1: Get Server Information
+    await this.test('7.1: Get Server Information', async (): Promise<TestExpectation> => {
+      const result = await this.client.callTool({
+        name: 'get_server_info',
+        arguments: {},
+      });
+
+      const response = this.parseToolResponse<GetServerInfoResponse>(result as any);
+      return {
+        expected: {
+          hasName: true,
+          hasVersion: true,
+          hasStoragePath: true,
+          hasDescription: true,
+        },
+        actual: {
+          hasName: !!response.name,
+          hasVersion: !!response.version,
+          hasStoragePath: !!response.storage_path,
+          hasDescription: !!response.description,
+        },
+      };
+    });
+
+    // Test 7.2: Get Storage Status
+    await this.test('7.2: Get Storage Status', async (): Promise<TestExpectation> => {
+      const result = await this.client.callTool({
+        name: 'get_storage_status',
+        arguments: {},
+      });
+
+      const response = this.parseToolResponse<GetStorageStatusResponse>(result as any);
+      return {
+        expected: {
+          hasStoragePath: true,
+          hasChangesFlag: true,
+          hasBranchField: true,
+          hasStatusDetails: true,
+        },
+        actual: {
+          hasStoragePath: !!response.storage_path,
+          hasChangesFlag: typeof response.has_changes === 'boolean',
+          hasBranchField: 'current_branch' in response,
+          hasStatusDetails: !!response.status_details,
+        },
+      };
+    });
+
+    // Test 7.3: Sync Storage
+    await this.test('7.3: Sync Storage', async (): Promise<TestExpectation> => {
+      const result = await this.client.callTool({
+        name: 'sync_storage',
+        arguments: {},
+      });
+
+      const response = this.parseToolResponse<SyncStorageResponse>(result as any);
+      return {
+        expected: {
+          hasMessage: true,
+          hasFilesCommitted: true,
+          hasPushedFlag: true,
+        },
+        actual: {
+          hasMessage: !!response.message,
+          hasFilesCommitted: typeof response.files_committed === 'number',
+          hasPushedFlag: typeof response.pushed === 'boolean',
+        },
       };
     });
   }

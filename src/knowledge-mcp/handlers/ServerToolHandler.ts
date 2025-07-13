@@ -41,12 +41,26 @@ export class ServerToolHandler extends BaseHandler {
 
     try {
       // Get git status
-      const { stdout: statusOutput } = gitCommand(STORAGE_PATH, 'status', '--porcelain');
-      const hasChanges = statusOutput.trim().length > 0;
+      let statusOutput = '';
+      let hasChanges = false;
+      try {
+        const result = gitCommand(STORAGE_PATH, 'status', '--porcelain');
+        statusOutput = result.stdout.trim();
+        hasChanges = statusOutput.length > 0;
+      } catch {
+        // Git status failed, assume no changes
+        hasChanges = false;
+      }
 
       // Get current branch
-      const { stdout: branchOutput } = gitCommand(STORAGE_PATH, 'branch', '--show-current');
-      const currentBranch = branchOutput.trim();
+      let currentBranch = '';
+      try {
+        const result = gitCommand(STORAGE_PATH, 'branch', '--show-current');
+        currentBranch = result.stdout.trim();
+      } catch {
+        // No branch if no commits yet
+        currentBranch = '';
+      }
 
       // Get last commit info
       let lastCommit = 'No commits yet';

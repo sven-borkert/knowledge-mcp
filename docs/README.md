@@ -20,7 +20,7 @@ This directory contains comprehensive documentation for the Knowledge MCP Server
 
 3. **[MCP Interface Test Plan](./mcp-interface-test-plan.md)**
    - Language-agnostic test specifications
-   - 17 comprehensive test cases
+   - 20 comprehensive test cases
    - Success criteria
    - Edge case testing
 
@@ -58,4 +58,4 @@ To contribute to the documentation:
 
 ## Version
 
-This documentation reflects Knowledge MCP Server v0.1.1 (TypeScript implementation).
+This documentation reflects Knowledge MCP Server v0.2.2 (TypeScript implementation).

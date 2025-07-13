@@ -1,4 +1,4 @@
-import { execSync, exec as execCallback } from 'child_process';
+import { execSync, spawnSync, spawn, exec as execCallback } from 'child_process';
 import {
   existsSync,
   mkdirSync,
@@ -9,6 +9,7 @@ import {
   renameSync,
   realpathSync,
   lstatSync,
+  rmSync,
 } from 'fs';
 import {
   access,
@@ -20,11 +21,14 @@ import {
   rename,
   realpath,
   lstat,
+  rm,
 } from 'fs/promises';
 import { join, resolve, isAbsolute, dirname, sep } from 'path';
 import { promisify } from 'util';
 
 import slugifyLib from 'slugify';
+
+import { logger } from './config/index.js';
 
 const exec = promisify(execCallback);
 
@@ -331,26 +335,28 @@ export function gitCommand(
     ...args,
   ];
 
-  try {
-    // Use execSync with command string - arguments are already validated for security
-    const stdout = execSync(`git ${gitArgs.join(' ')}`, {
-      cwd: repoPath,
-      encoding: 'utf8',
-      stdio: ['pipe', 'pipe', 'pipe'],
-    });
+  // Use spawnSync for safer argument handling
+  const result = spawnSync('git', gitArgs, {
+    cwd: repoPath,
+    encoding: 'utf8',
+    stdio: ['pipe', 'pipe', 'pipe'],
+  });
 
-    return { stdout: stdout.toString(), stderr: '' };
-  } catch (error: unknown) {
-    // Type-safe error handling
-    if (error && typeof error === 'object' && 'stdout' in error && 'stderr' in error) {
-      const errorObj = error as { stdout?: unknown; stderr?: unknown };
-      return {
-        stdout: typeof errorObj.stdout === 'string' ? errorObj.stdout : '',
-        stderr: typeof errorObj.stderr === 'string' ? errorObj.stderr : '',
-      };
-    }
-    throw error;
+  if (result.error) {
+    throw result.error;
   }
+
+  // Check exit code for command failure
+  if (result.status !== 0) {
+    throw new Error(
+      `Git command failed with exit code ${result.status}: ${result.stderr || 'Unknown error'}`
+    );
+  }
+
+  return {
+    stdout: result.stdout || '',
+    stderr: result.stderr || '',
+  };
 }
 
 /**
@@ -364,10 +370,12 @@ export function initializeStorage(storagePath: string): void {
   const gitDir = join(storagePath, '.git');
   const isNewRepo = !existsSync(gitDir);
 
-  // Ensure .gitignore exists (for both new and existing repos)
+  // Ensure .gitignore exists and is up to date (for both new and existing repos)
   ensureLogGitignore(storagePath);
 
+  // For existing repos, remove any newly ignored files from git tracking
   if (!isNewRepo) {
+    removeIgnoredFilesFromTracking(storagePath);
     return;
   }
 
@@ -411,6 +419,36 @@ export function pushToOrigin(repoPath: string): void {
   } catch (error) {
     // Log error but don't fail the operation
     console.error(`Git push failed: ${error instanceof Error ? error.message : String(error)}`);
+  }
+}
+
+/**
+ * Pull changes from origin/main.
+ * Performs a hard reset to avoid merge conflicts.
+ */
+export function pullFromOrigin(repoPath: string): void {
+  try {
+    // Only pull if remote exists
+    if (!hasGitRemote(repoPath)) {
+      // eslint-disable-next-line no-console
+      logger.info('No git remote configured, skipping pull');
+      return;
+    }
+
+    // eslint-disable-next-line no-console
+    logger.info('Pulling latest changes from origin/main...');
+
+    // Fetch latest changes from remote
+    gitCommand(repoPath, 'fetch', 'origin', 'main');
+
+    // Hard reset to match remote (overwrites local changes)
+    gitCommand(repoPath, 'reset', '--hard', 'origin/main');
+
+    // eslint-disable-next-line no-console
+    logger.info('Successfully pulled and reset to origin/main');
+  } catch (error) {
+    // Log warning but don't fail the operation
+    console.warn(`Git pull failed: ${error instanceof Error ? error.message : String(error)}`);
   }
 }
 
@@ -520,18 +558,62 @@ export function getProjectDirectory(storagePath: string, projectId: string): [st
 }
 
 /**
- * Find the original project ID from a directory name.
+ * Delete a project directory and remove it from the index mapping.
+ * This is a synchronous operation that performs atomic updates.
  */
-export function findProjectByDirectory(storagePath: string, dirName: string): string | null {
+export function deleteProjectDirectory(storagePath: string, projectId: string): void {
   const index = readProjectIndex(storagePath);
 
-  for (const [originalId, slugified] of Object.entries(index)) {
-    if (slugified === dirName) {
-      return originalId;
+  // Check if project exists in index
+  if (!(projectId in index)) {
+    throw new Error(`Project '${projectId}' not found in index`);
+  }
+
+  const dirName = index[projectId];
+  const projectPath = join(storagePath, 'projects', dirName);
+
+  // Delete directory if it exists
+  if (existsSync(projectPath)) {
+    rmSync(projectPath, { recursive: true, force: true });
+  }
+
+  // Remove from index
+  const { [projectId]: _removed, ...newIndex } = index;
+  writeProjectIndex(storagePath, newIndex);
+}
+
+/**
+ * Async version of deleteProjectDirectory.
+ * Delete a project directory and remove it from the index mapping.
+ */
+export async function deleteProjectDirectoryAsync(
+  storagePath: string,
+  projectId: string
+): Promise<void> {
+  const index = await readProjectIndexAsync(storagePath);
+
+  // Check if project exists in index
+  if (!(projectId in index)) {
+    throw new Error(`Project '${projectId}' not found in index`);
+  }
+
+  const dirName = index[projectId];
+  const projectPath = join(storagePath, 'projects', dirName);
+
+  // Delete directory if it exists
+  try {
+    await access(projectPath);
+    await rm(projectPath, { recursive: true, force: true });
+  } catch (error) {
+    // Directory doesn't exist, continue with index cleanup
+    if (error && typeof error === 'object' && 'code' in error && error.code !== 'ENOENT') {
+      throw error;
     }
   }
 
-  return null;
+  // Remove from index
+  const { [projectId]: _removed, ...newIndex } = index;
+  await writeProjectIndexAsync(storagePath, newIndex);
 }
 
 /**
@@ -594,24 +676,85 @@ export function logMethodCall(
 }
 
 /**
- * Ensure the storage folder has a .gitignore that excludes the activity log
+ * Remove files that are now ignored by .gitignore from git tracking
+ */
+export function removeIgnoredFilesFromTracking(storagePath: string): void {
+  try {
+    // Get list of tracked files that are now ignored
+    const { stdout: ignoredTracked } = gitCommand(
+      storagePath,
+      'ls-files',
+      '-i',
+      '-c',
+      '--exclude-standard'
+    );
+
+    if (ignoredTracked.trim()) {
+      const filesToRemove = ignoredTracked
+        .trim()
+        .split('\n')
+        .filter((file) => file.trim());
+
+      if (filesToRemove.length > 0) {
+        // Remove files from git tracking but keep them in working directory
+        gitCommand(storagePath, 'rm', '--cached', ...filesToRemove);
+
+        // Auto-commit the removal
+        autoCommit(storagePath, `Remove ${filesToRemove.length} files now ignored by .gitignore`);
+
+        logger.info(
+          `Removed ${filesToRemove.length} ignored files from git tracking:`,
+          filesToRemove
+        );
+      }
+    }
+  } catch (error) {
+    // Don't fail if this operation fails - it's not critical
+    console.warn(
+      `Failed to remove ignored files from tracking: ${error instanceof Error ? error.message : String(error)}`
+    );
+  }
+}
+
+/**
+ * Ensure the storage folder has a .gitignore that excludes system files and logs
  */
 export function ensureLogGitignore(storagePath: string): void {
   try {
     const gitignoreFile = join(storagePath, '.gitignore');
-    const logIgnoreEntry = 'activity.log\n';
+    const gitignoreContent = `# Activity logs
+activity.log
+
+# System files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
+*~
+`;
 
     if (!existsSync(gitignoreFile)) {
-      // Create .gitignore with log file entry
-      writeFileSync(gitignoreFile, logIgnoreEntry);
+      // Create .gitignore with complete content
+      writeFileSync(gitignoreFile, gitignoreContent);
     } else {
-      // Check if activity.log is already ignored
+      // Check if .gitignore contains all required entries
       const content = readFileSync(gitignoreFile, 'utf8');
-      if (!content.includes('activity.log')) {
-        // Append the ignore entry
+      const requiredEntries = ['activity.log', '.DS_Store', '*.tmp', '*.temp'];
+
+      const missingEntries = requiredEntries.filter((entry) => !content.includes(entry));
+
+      if (missingEntries.length > 0) {
+        // Update .gitignore with complete content
         writeFileSync(
           gitignoreFile,
-          content + (content.endsWith('\n') ? '' : '\n') + logIgnoreEntry
+          content + (content.endsWith('\n') ? '' : '\n') + gitignoreContent
         );
       }
     }
@@ -674,26 +817,38 @@ export async function gitCommandAsync(
     ...args,
   ];
 
-  try {
-    const { stdout, stderr } = await exec(`git ${gitArgs.join(' ')}`, {
+  return new Promise((resolve, reject) => {
+    // Use spawn for safer argument handling (consistent with sync version)
+    const child = spawn('git', gitArgs, {
       cwd: repoPath,
-      encoding: 'utf8',
+      stdio: ['pipe', 'pipe', 'pipe'],
     });
 
-    return { stdout, stderr };
-  } catch (error: unknown) {
-    // Type-safe error handling
-    if (error && typeof error === 'object' && 'stdout' in error && 'stderr' in error) {
-      const errorObj = error as { stdout?: unknown; stderr?: unknown };
-      return {
-        stdout: typeof errorObj.stdout === 'string' ? errorObj.stdout : '',
-        stderr: typeof errorObj.stderr === 'string' ? errorObj.stderr : '',
-      };
-    }
-    throw new Error(
-      `Git command failed: ${error instanceof Error ? error.message : String(error)}`
-    );
-  }
+    let stdout = '';
+    let stderr = '';
+
+    child.stdout?.on('data', (data: Buffer) => {
+      stdout += data.toString();
+    });
+
+    child.stderr?.on('data', (data: Buffer) => {
+      stderr += data.toString();
+    });
+
+    child.on('close', (code: number) => {
+      if (code !== 0) {
+        reject(
+          new Error(`Git command failed with exit code ${code}: ${stderr || 'Unknown error'}`)
+        );
+      } else {
+        resolve({ stdout: stdout || '', stderr: stderr || '' });
+      }
+    });
+
+    child.on('error', (error: Error) => {
+      reject(error);
+    });
+  });
 }
 
 /**
@@ -710,10 +865,16 @@ export async function initializeStorageAsync(storagePath: string): Promise<void>
     .then(() => true)
     .catch(() => false);
 
-  // Ensure .gitignore exists (for both new and existing repos)
+  // Ensure .gitignore exists and is up to date (for both new and existing repos)
   await ensureLogGitignoreAsync(storagePath);
 
+  // For existing repos, pull from remote first if configured, then handle ignored files
   if (gitExists) {
+    // Pull from remote if configured to sync with latest changes
+    await pullFromOriginAsync(storagePath);
+
+    // Remove any newly ignored files from git tracking
+    await removeIgnoredFilesFromTrackingAsync(storagePath);
     return;
   }
 
@@ -759,6 +920,37 @@ export async function pushToOriginAsync(repoPath: string): Promise<void> {
   } catch (error) {
     // Log error but don't fail the operation
     console.error(`Git push failed: ${error instanceof Error ? error.message : String(error)}`);
+  }
+}
+
+/**
+ * Async version of pullFromOrigin.
+ * Pull changes from origin/main.
+ * Performs a hard reset to avoid merge conflicts.
+ */
+export async function pullFromOriginAsync(repoPath: string): Promise<void> {
+  try {
+    // Only pull if remote exists
+    if (!(await hasGitRemoteAsync(repoPath))) {
+      // eslint-disable-next-line no-console
+      logger.info('No git remote configured, skipping pull');
+      return;
+    }
+
+    // eslint-disable-next-line no-console
+    logger.info('Pulling latest changes from origin/main...');
+
+    // Fetch latest changes from remote
+    await gitCommandAsync(repoPath, 'fetch', 'origin', 'main');
+
+    // Hard reset to match remote (overwrites local changes)
+    await gitCommandAsync(repoPath, 'reset', '--hard', 'origin/main');
+
+    // eslint-disable-next-line no-console
+    logger.info('Successfully pulled and reset to origin/main');
+  } catch (error) {
+    // Log warning but don't fail the operation
+    console.warn(`Git pull failed: ${error instanceof Error ? error.message : String(error)}`);
   }
 }
 
@@ -920,30 +1112,93 @@ export async function logActivityAsync(
 }
 
 /**
+ * Async version of removeIgnoredFilesFromTracking.
+ * Remove files that are now ignored by .gitignore from git tracking
+ */
+export async function removeIgnoredFilesFromTrackingAsync(storagePath: string): Promise<void> {
+  try {
+    // Get list of tracked files that are now ignored
+    const { stdout: ignoredTracked } = await gitCommandAsync(
+      storagePath,
+      'ls-files',
+      '-i',
+      '-c',
+      '--exclude-standard'
+    );
+
+    if (ignoredTracked.trim()) {
+      const filesToRemove = ignoredTracked
+        .trim()
+        .split('\n')
+        .filter((file) => file.trim());
+
+      if (filesToRemove.length > 0) {
+        // Remove files from git tracking but keep them in working directory
+        await gitCommandAsync(storagePath, 'rm', '--cached', ...filesToRemove);
+
+        // Auto-commit the removal
+        await autoCommitAsync(
+          storagePath,
+          `Remove ${filesToRemove.length} files now ignored by .gitignore`
+        );
+
+        logger.info(
+          `Removed ${filesToRemove.length} ignored files from git tracking:`,
+          filesToRemove
+        );
+      }
+    }
+  } catch (error) {
+    // Don't fail if this operation fails - it's not critical
+    console.warn(
+      `Failed to remove ignored files from tracking: ${error instanceof Error ? error.message : String(error)}`
+    );
+  }
+}
+
+/**
  * Async version of ensureLogGitignore.
- * Ensure the activity.log file is in .gitignore.
+ * Ensure system files and logs are in .gitignore.
  */
 export async function ensureLogGitignoreAsync(storagePath: string): Promise<void> {
   try {
     const gitignoreFile = join(storagePath, '.gitignore');
-    const logIgnoreEntry = 'activity.log';
+    const gitignoreContent = `# Activity logs
+activity.log
+
+# System files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
+*~
+`;
 
     try {
       await access(gitignoreFile);
-      // File exists, check if it already contains the entry
+      // File exists, check if it contains all required entries
       const content = await readFile(gitignoreFile, 'utf8');
-      const hasEntry = content.split('\n').some((line) => line.trim() === logIgnoreEntry);
+      const requiredEntries = ['activity.log', '.DS_Store', '*.tmp', '*.temp'];
 
-      if (!hasEntry) {
-        // Append the ignore entry
+      const missingEntries = requiredEntries.filter((entry) => !content.includes(entry));
+
+      if (missingEntries.length > 0) {
+        // Update .gitignore with complete content
         await writeFile(
           gitignoreFile,
-          content + (content.endsWith('\n') ? '' : '\n') + logIgnoreEntry
+          content + (content.endsWith('\n') ? '' : '\n') + gitignoreContent
         );
       }
     } catch {
-      // File doesn't exist, create it with the log entry
-      await writeFile(gitignoreFile, logIgnoreEntry);
+      // File doesn't exist, create it with complete content
+      await writeFile(gitignoreFile, gitignoreContent);
     }
   } catch (error) {
     console.error(

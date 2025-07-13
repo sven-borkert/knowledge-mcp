@@ -327,6 +327,43 @@ node dist/knowledge-mcp/index.js
 
 ---
 
+## 📚 KNOWLEDGE MCP USAGE GUIDELINES
+
+### What to Upload to Knowledge MCP
+
+✅ **DO Upload:**
+- **Main project instructions** (replaces CLAUDE.md)
+- **Specific knowledge topics** (API guides, architecture docs, troubleshooting guides)
+- **Domain-specific documentation** (database schemas, deployment procedures)
+- **Technical specifications** for components or features
+
+❌ **DO NOT Upload:**
+- **README files** - These are for repository browsing, not AI context
+- **Index files** - The MCP server provides listing and search functionality
+- **Table of contents files** - Use the built-in search and listing tools
+- **Navigation files** - Knowledge files are searchable and auto-listed
+- **General documentation overviews** - Focus on specific, actionable knowledge
+
+### Rationale
+
+The Knowledge MCP Server provides:
+- **Automatic file listing** via resources and tools
+- **Built-in search functionality** across all knowledge documents
+- **Chapter-level navigation** within documents
+- **Metadata-based organization** with keywords and titles
+
+Therefore, index/README files are redundant and create unnecessary noise in the knowledge base.
+
+### Knowledge Organization Best Practices
+
+1. **Use descriptive filenames**: `authentication-api.md`, `deployment-procedures.md`
+2. **Include rich metadata**: Add relevant keywords for searchability
+3. **Structure with chapters**: Break content into logical sections
+4. **Focus on actionable content**: Include code examples, commands, procedures
+5. **Avoid duplication**: Don't repeat information that's in main project instructions
+
+---
+
 ## 🏗️ ARCHITECTURE OVERVIEW
 
 ### Core Components
