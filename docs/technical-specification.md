@@ -460,10 +460,12 @@ All errors return a consistent response structure:
 The system uses typed error codes for consistent error handling:
 
 **General Errors:**
+
 - `UNKNOWN_ERROR` - Unexpected errors
 - `INTERNAL_ERROR` - Internal server errors
 
 **Validation Errors:**
+
 - `INVALID_INPUT` - Invalid input parameters
 - `INVALID_PROJECT_ID` - Invalid project identifier
 - `INVALID_FILENAME` - Invalid filename format
@@ -471,6 +473,7 @@ The system uses typed error codes for consistent error handling:
 - `INVALID_CONTENT` - Content validation failed
 
 **Resource Errors:**
+
 - `NOT_FOUND` - Generic resource not found
 - `PROJECT_NOT_FOUND` - Project doesn't exist
 - `DOCUMENT_NOT_FOUND` - Knowledge document not found
@@ -478,16 +481,19 @@ The system uses typed error codes for consistent error handling:
 - `SECTION_NOT_FOUND` - Section not found in main.md
 
 **File System Errors:**
+
 - `FILE_SYSTEM_ERROR` - File system operation failed
 - `ACCESS_DENIED` - Permission denied
 - `FILE_ALREADY_EXISTS` - File already exists
 - `PROJECT_DELETE_FAILED` - Project deletion failed
 
 **Git Errors:**
+
 - `GIT_ERROR` - Git operation failed
 - `GIT_COMMAND_FAILED` - Git command execution failed
 
 **Search Errors:**
+
 - `SEARCH_ERROR` - Search operation failed
 - `INVALID_SEARCH_QUERY` - Invalid search query format
 

@@ -628,6 +628,9 @@ export interface MethodLogEntry {
   section_header?: string;
   success: boolean;
   error?: string;
+  traceId?: string;
+  duration?: number;
+  params?: Record<string, unknown>;
 }
 
 /**
@@ -643,6 +646,8 @@ export function logMethodCall(
     section_header?: string;
     success: boolean;
     error?: string;
+    traceId?: string;
+    duration?: number;
   }
 ): void {
   try {
@@ -655,6 +660,8 @@ export function logMethodCall(
       ...(params.chapter_title && { chapter_title: params.chapter_title }),
       ...(params.section_header && { section_header: params.section_header }),
       ...(params.error && { error: params.error }),
+      ...(params.traceId && { traceId: params.traceId }),
+      ...(params.duration !== undefined && { duration: params.duration }),
     };
 
     const logFile = join(storagePath, 'activity.log');
@@ -1088,10 +1095,33 @@ export async function logActivityAsync(
   try {
     const logFile = join(storagePath, 'activity.log');
     const timestamp = new Date().toISOString();
-    const logEntry = {
+
+    // Extract known fields from params to create a flat structure
+    const {
+      success,
+      project_id,
+      filename,
+      chapter_title,
+      section_header,
+      error,
+      traceId,
+      duration,
+      ...otherParams
+    } = params;
+
+    const logEntry: MethodLogEntry = {
       timestamp,
       method,
-      params,
+      success: (success as boolean) ?? true,
+      ...(project_id ? { project_id: project_id as string } : {}),
+      ...(filename ? { filename: filename as string } : {}),
+      ...(chapter_title ? { chapter_title: chapter_title as string } : {}),
+      ...(section_header ? { section_header: section_header as string } : {}),
+      ...(error ? { error: error as string } : {}),
+      ...(traceId ? { traceId: traceId as string } : {}),
+      ...(duration !== undefined ? { duration: duration as number } : {}),
+      // Include any other params that don't fit the standard structure
+      ...(Object.keys(otherParams).length > 0 ? { params: otherParams } : {}),
     };
     const logLine = JSON.stringify(logEntry) + '\n';
 

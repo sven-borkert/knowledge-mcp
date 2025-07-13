@@ -19,7 +19,11 @@ The Knowledge MCP Server provides persistent project-specific knowledge manageme
 ### 1. Install the MCP Server
 
 ```bash
-claude mcp add knowledge-mcp npx @spothlynx/knowledge-mcp
+# For global scope (all projects) - ensures latest version is always used
+claude mcp add knowledge-mcp npx -- -y @spothlynx/knowledge-mcp@latest
+
+# For current project only
+claude mcp add --scope project knowledge-mcp npx -- -y @spothlynx/knowledge-mcp@latest
 ```
 
 ### 2. Configure Claude Code for Automatic Usage
@@ -86,7 +90,7 @@ For Claude Desktop users, add to `~/Library/Application Support/Claude/claude_de
   "mcpServers": {
     "knowledge": {
       "command": "npx",
-      "args": ["@spothlynx/knowledge-mcp"]
+      "args": ["-y", "@spothlynx/knowledge-mcp@latest"]
     }
   }
 }
@@ -224,6 +228,111 @@ This ensures your knowledge stays synchronized across devices but **local change
 }
 ```
 
+## 📦 Version Management
+
+### Why We Use `-y` and `@latest`
+
+The installation commands include specific flags to ensure you always get the newest version:
+
+- **`-y` flag**: Automatically accepts the npx installation prompt without user interaction
+- **`@latest` tag**: Forces npx to fetch the newest version instead of using cached versions
+
+**Important**: NPX caches packages indefinitely and won't check for updates automatically. Without `@latest`, you might be running an outdated version even if updates are available.
+
+### Updating to Latest Version
+
+If you installed without `@latest`, simply remove and re-add:
+
+```bash
+claude mcp remove knowledge-mcp
+claude mcp add knowledge-mcp npx -- -y @spothlynx/knowledge-mcp@latest
+```
+
+## 🎯 MCP Configuration Precedence
+
+### Understanding Configuration Levels
+
+Claude Code loads MCP configurations in this precedence order (highest to lowest):
+
+1. **User-level (Global)**: Added with `claude mcp add` - applies to all projects
+2. **Project-level**: Added with `claude mcp add --scope project` - applies to current project
+3. **`.mcp.json` file**: Manual configuration file - only loaded when explicitly specified
+
+**Important**: User-level configurations always override project configurations and `.mcp.json` files.
+
+### Verifying Your Current Version
+
+To check which version of Knowledge MCP is currently active:
+
+```bash
+# Check active MCP servers
+claude mcp list | grep knowledge-mcp
+
+# For development: Should show local path
+# Example: knowledge-mcp: node /path/to/knowledge-mcp/dist/knowledge-mcp/index.js
+
+# For production: Should show npx with @latest
+# Example: knowledge-mcp: npx -y @spothlynx/knowledge-mcp@latest
+```
+
+### Ensuring You're Using the Latest Version
+
+#### For Production Users
+
+Always use the `@latest` tag to bypass npx cache:
+
+```bash
+# Remove any existing configuration
+claude mcp remove knowledge-mcp -s local  # Remove global config
+claude mcp remove knowledge-mcp -s project # Remove project config
+
+# Add with @latest tag to force newest version
+claude mcp add knowledge-mcp npx -- -y @spothlynx/knowledge-mcp@latest
+```
+
+#### For Development
+
+When developing or testing local changes:
+
+```bash
+# Point to your local build
+claude mcp add knowledge-mcp node /path/to/knowledge-mcp/dist/knowledge-mcp/index.js
+
+# After making changes, rebuild
+cd /path/to/knowledge-mcp
+pnpm run build
+
+# Restart Claude Code to load the updated build
+```
+
+### Troubleshooting Version Issues
+
+If you're not getting the expected version:
+
+1. **Check all configuration scopes**:
+
+   ```bash
+   claude mcp list  # Shows all configurations
+   ```
+
+2. **Clear npx cache** if using published version:
+
+   ```bash
+   # Remove cached versions
+   rm -rf ~/.npm/_npx
+
+   # Reinstall with @latest
+   claude mcp remove knowledge-mcp
+   claude mcp add knowledge-mcp npx -- -y @spothlynx/knowledge-mcp@latest
+   ```
+
+3. **Verify the loaded version**:
+   ```bash
+   # Check server info (run in Claude Code)
+   /mcp
+   # Look for "Knowledge MCP Server" version number
+   ```
+
 ## 🛡️ Security & Reliability
 
 - **Path Validation**: Prevents directory traversal attacks
@@ -239,9 +348,9 @@ This ensures your knowledge stays synchronized across devices but **local change
 1. **"spawn npx ENOENT" or "Connection closed"**
 
    ```bash
-   # Remove and re-add without the -y flag
+   # Remove and re-add to ensure latest version
    claude mcp remove knowledge-mcp
-   claude mcp add knowledge-mcp npx @spothlynx/knowledge-mcp
+   claude mcp add knowledge-mcp npx -- -y @spothlynx/knowledge-mcp@latest
    ```
 
 2. **Permission errors**

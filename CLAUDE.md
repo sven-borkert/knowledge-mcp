@@ -332,12 +332,14 @@ node dist/knowledge-mcp/index.js
 ### What to Upload to Knowledge MCP
 
 ✅ **DO Upload:**
+
 - **Main project instructions** (replaces CLAUDE.md)
 - **Specific knowledge topics** (API guides, architecture docs, troubleshooting guides)
 - **Domain-specific documentation** (database schemas, deployment procedures)
 - **Technical specifications** for components or features
 
 ❌ **DO NOT Upload:**
+
 - **README files** - These are for repository browsing, not AI context
 - **Index files** - The MCP server provides listing and search functionality
 - **Table of contents files** - Use the built-in search and listing tools
@@ -347,6 +349,7 @@ node dist/knowledge-mcp/index.js
 ### Rationale
 
 The Knowledge MCP Server provides:
+
 - **Automatic file listing** via resources and tools
 - **Built-in search functionality** across all knowledge documents
 - **Chapter-level navigation** within documents
