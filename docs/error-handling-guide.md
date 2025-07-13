@@ -20,19 +20,18 @@
 
 ## Common Error Codes
 
-| Code                  | Description                        | Retryable | Example                                      |
-| --------------------- | ---------------------------------- | --------- | -------------------------------------------- |
-| `PROJECT_NOT_FOUND`   | Project doesn't exist              | No        | `get_project_main` for non-existent project  |
-| `DOCUMENT_NOT_FOUND`  | Knowledge file not found           | No        | `get_knowledge_file` for missing file        |
-| `CHAPTER_NOT_FOUND`   | Chapter not found (case-sensitive) | No        | `update_chapter` with wrong title            |
-| `SECTION_NOT_FOUND`   | Section not found in main.md       | No        | `update_project_section` with missing header |
-| `FILE_ALREADY_EXISTS` | File already exists                | No        | `create_knowledge_file` with existing name   |
-| `FILE_SYSTEM_ERROR`   | File operation failed              | Yes (3x)  | Temporary file lock, disk full               |
-| `GIT_ERROR`           | Git operation failed               | Yes (3x)  | Git command failure                          |
-| `STORAGE_ERROR`       | Storage operation failed           | Yes (3x)  | Storage initialization issues                |
-| `INVALID_INPUT`       | Input validation failed            | No        | Missing required fields                      |
-| `INVALID_PATH`        | Path validation failed             | No        | Directory traversal attempt                  |
-| `ACCESS_DENIED`       | Permission denied                  | No        | No write permissions                         |
+| Code                  | Description                        | Example                                      |
+| --------------------- | ---------------------------------- | -------------------------------------------- |
+| `PROJECT_NOT_FOUND`   | Project doesn't exist              | `get_project_main` for non-existent project  |
+| `DOCUMENT_NOT_FOUND`  | Knowledge file not found           | `get_knowledge_file` for missing file        |
+| `CHAPTER_NOT_FOUND`   | Chapter not found (case-sensitive) | `update_chapter` with wrong title            |
+| `SECTION_NOT_FOUND`   | Section not found in main.md       | `update_project_section` with missing header |
+| `FILE_ALREADY_EXISTS` | File already exists                | `create_knowledge_file` with existing name   |
+| `FILE_SYSTEM_ERROR`   | File operation failed              | Temporary file lock, disk full               |
+| `GIT_ERROR`           | Git operation failed               | Git command failure                          |
+| `INVALID_INPUT`       | Input validation failed            | Missing required fields                      |
+| `INVALID_PATH`        | Path validation failed             | Directory traversal attempt                  |
+| `ACCESS_DENIED`       | Permission denied                  | No write permissions                         |
 
 ## Debugging with Trace IDs
 
@@ -121,48 +120,6 @@ class MyHandler extends BaseHandler {
 }
 ```
 
-## Automatic Retry Mechanism
-
-### Configuration
-
-```typescript
-const retryOptions = {
-  maxAttempts: 3, // Number of retry attempts
-  initialDelay: 100, // First retry after 100ms
-  maxDelay: 5000, // Max delay between retries
-  backoffMultiplier: 2, // Double delay each retry
-  retryableErrors: [
-    // Which errors to retry
-    MCPErrorCode.FILE_SYSTEM_ERROR,
-    MCPErrorCode.GIT_ERROR,
-    MCPErrorCode.STORAGE_ERROR,
-  ],
-};
-```
-
-### Using Retry Wrapper
-
-```typescript
-import { withRetry } from '../utils/retry.js';
-
-// Wrap async operations
-const result = await withRetry(async () => {
-  return await performRiskyOperation();
-}, retryOptions);
-
-// For sync operations
-const syncResult = withRetrySync(() => performSyncOperation(), retryOptions);
-```
-
-### File System Specific Retries
-
-The following Node.js error codes are automatically retried:
-
-- `EAGAIN` - Resource temporarily unavailable
-- `EBUSY` - Resource busy
-- `EMFILE` - Too many open files
-- `ENFILE` - Too many open files in system
-
 ## Best Practices
 
 ### DO ✅
@@ -177,7 +134,7 @@ The following Node.js error codes are automatically retried:
 
 1. **Don't use generic errors** - Avoid `throw new Error()`
 2. **Don't expose sensitive data** - Keep file contents out of errors
-3. **Don't retry non-transient errors** - Only retry file/git/storage errors
+3. **Don't swallow errors** - Always handle errors appropriately
 4. **Don't ignore error context** - Always propagate trace IDs
 5. **Don't catch without logging** - Always log errors for debugging
 

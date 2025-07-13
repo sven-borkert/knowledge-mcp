@@ -5,6 +5,7 @@ import type { z } from 'zod';
 
 import { parseDocument, parseChapters, writeDocument } from '../documents.js';
 import type { Chapter } from '../documents.js';
+import { MCPError, MCPErrorCode } from '../errors/index.js';
 import type {
   secureProjectIdSchema,
   secureFilenameSchema,
@@ -26,6 +27,8 @@ export class ChapterToolHandler extends BaseHandler {
     new_content: z.infer<typeof secureChapterContentSchema>;
     new_summary?: string;
   }): string {
+    const context = this.createContext('update_chapter', params);
+
     try {
       const { project_id, filename, chapter_title, new_content, new_summary } = params;
       const [originalId, projectPath] = getProjectDirectory(this.storagePath, project_id);
@@ -34,7 +37,11 @@ export class ChapterToolHandler extends BaseHandler {
 
       // Check if file exists
       if (!existsSync(filePath)) {
-        throw new Error(`Knowledge file ${filename} not found in project ${originalId}`);
+        throw new MCPError(
+          MCPErrorCode.DOCUMENT_NOT_FOUND,
+          `Knowledge file ${filename} not found in project ${originalId}`,
+          { project_id, filename, traceId: context.traceId }
+        );
       }
 
       // Read and parse the document
@@ -61,7 +68,11 @@ export class ChapterToolHandler extends BaseHandler {
       }
 
       if (!chapterFound) {
-        throw new Error(`Chapter "${chapter_title}" not found in ${filename}`);
+        throw new MCPError(
+          MCPErrorCode.CHAPTER_NOT_FOUND,
+          `Chapter "${chapter_title}" not found in ${filename}`,
+          { project_id, filename, chapter_title, traceId: context.traceId }
+        );
       }
 
       // Update metadata
@@ -83,12 +94,24 @@ export class ChapterToolHandler extends BaseHandler {
       // Auto-commit
       autoCommit(this.storagePath, `Update chapter "${chapter_title}" in ${filename}`);
 
-      this.logSuccess('update_chapter', { project_id, filename, chapter_title });
+      this.logSuccess('update_chapter', { project_id, filename, chapter_title }, context);
       return this.formatSuccessResponse({
         message: `Chapter "${chapter_title}" updated in ${filename}`,
       });
     } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : String(error);
+      const mcpError =
+        error instanceof MCPError
+          ? error
+          : new MCPError(
+              MCPErrorCode.FILE_SYSTEM_ERROR,
+              `Failed to update chapter: ${error instanceof Error ? error.message : String(error)}`,
+              {
+                project_id: params.project_id,
+                filename: params.filename,
+                chapter_title: params.chapter_title,
+                traceId: context.traceId,
+              }
+            );
       this.logError(
         'update_chapter',
         {
@@ -96,9 +119,10 @@ export class ChapterToolHandler extends BaseHandler {
           filename: params.filename,
           chapter_title: params.chapter_title,
         },
-        errorMsg
+        mcpError,
+        context
       );
-      return this.formatErrorResponse(errorMsg);
+      return this.formatErrorResponse(mcpError, context);
     }
   }
 
@@ -110,6 +134,8 @@ export class ChapterToolHandler extends BaseHandler {
     filename: z.infer<typeof secureFilenameSchema>;
     chapter_title: z.infer<typeof secureChapterTitleSchema>;
   }): string {
+    const context = this.createContext('remove_chapter', params);
+
     try {
       const { project_id, filename, chapter_title } = params;
       const [originalId, projectPath] = getProjectDirectory(this.storagePath, project_id);
@@ -118,7 +144,11 @@ export class ChapterToolHandler extends BaseHandler {
 
       // Check if file exists
       if (!existsSync(filePath)) {
-        throw new Error(`Knowledge file ${filename} not found in project ${originalId}`);
+        throw new MCPError(
+          MCPErrorCode.DOCUMENT_NOT_FOUND,
+          `Knowledge file ${filename} not found in project ${originalId}`,
+          { project_id, filename, traceId: context.traceId }
+        );
       }
 
       // Read and parse the document
@@ -131,7 +161,11 @@ export class ChapterToolHandler extends BaseHandler {
       const updatedChapters = chapters.filter((ch) => ch.title !== chapter_title);
 
       if (updatedChapters.length === originalCount) {
-        throw new Error(`Chapter "${chapter_title}" not found in ${filename}`);
+        throw new MCPError(
+          MCPErrorCode.CHAPTER_NOT_FOUND,
+          `Chapter "${chapter_title}" not found in ${filename}`,
+          { project_id, filename, chapter_title, traceId: context.traceId }
+        );
       }
 
       // Update metadata
@@ -153,12 +187,24 @@ export class ChapterToolHandler extends BaseHandler {
       // Auto-commit
       autoCommit(this.storagePath, `Remove chapter "${chapter_title}" from ${filename}`);
 
-      this.logSuccess('remove_chapter', { project_id, filename, chapter_title });
+      this.logSuccess('remove_chapter', { project_id, filename, chapter_title }, context);
       return this.formatSuccessResponse({
         message: `Chapter "${chapter_title}" removed from ${filename}`,
       });
     } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : String(error);
+      const mcpError =
+        error instanceof MCPError
+          ? error
+          : new MCPError(
+              MCPErrorCode.FILE_SYSTEM_ERROR,
+              `Failed to remove chapter: ${error instanceof Error ? error.message : String(error)}`,
+              {
+                project_id: params.project_id,
+                filename: params.filename,
+                chapter_title: params.chapter_title,
+                traceId: context.traceId,
+              }
+            );
       this.logError(
         'remove_chapter',
         {
@@ -166,9 +212,10 @@ export class ChapterToolHandler extends BaseHandler {
           filename: params.filename,
           chapter_title: params.chapter_title,
         },
-        errorMsg
+        mcpError,
+        context
       );
-      return this.formatErrorResponse(errorMsg);
+      return this.formatErrorResponse(mcpError, context);
     }
   }
 }

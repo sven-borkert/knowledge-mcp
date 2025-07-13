@@ -12,59 +12,31 @@ This directory contains comprehensive documentation for the Knowledge MCP Server
    - Security features
    - Implementation details
 
-2. **[TypeScript Implementation](./typescript-implementation.md)**
-   - Detailed implementation guide
-   - Code structure and architecture
-   - Development workflow
-   - Performance characteristics
+2. **[Error Handling Guide](./error-handling-guide.md)**
+   - Error codes and their meanings
+   - Debugging with trace IDs
+   - Error handling patterns
+   - Log analysis tips
 
-3. **[Quick Reference](./quick-reference.md)**
-   - Installation steps
-   - Tool/resource reference
-   - Common commands
-   - Troubleshooting tips
-
-### Testing & Quality
-
-4. **[MCP Interface Test Plan](./mcp-interface-test-plan.md)**
+3. **[MCP Interface Test Plan](./mcp-interface-test-plan.md)**
    - Language-agnostic test specifications
-   - 15 comprehensive test cases
+   - 17 comprehensive test cases
    - Success criteria
    - Edge case testing
-
-5. **[TypeScript Testing Guide](./typescript-testing-guide.md)**
-   - Test execution instructions
-   - Test results summary
-   - Debugging tips
-   - Continuous testing workflow
-
-### Migration & Deployment
-
-6. **[Migration Guide](./migration-guide.md)**
-   - Python to TypeScript migration
-   - API compatibility reference
-   - Data compatibility
-   - Common migration issues
 
 ## Quick Start
 
 For new users:
 
-1. Start with the [Quick Reference](./quick-reference.md) for installation
+1. Install the package: `npm install -g @spothlynx/knowledge-mcp`
 2. Review the [Technical Specification](./technical-specification.md) for API details
-3. Use the [TypeScript Testing Guide](./typescript-testing-guide.md) to verify installation
+3. Follow the [MCP Interface Test Plan](./mcp-interface-test-plan.md) to verify installation
 
 For developers:
 
-1. Read the [TypeScript Implementation](./typescript-implementation.md) for code details
+1. Read the [Technical Specification](./technical-specification.md) for architecture details
 2. Follow the [MCP Interface Test Plan](./mcp-interface-test-plan.md) for testing
-3. Check the [Technical Specification](./technical-specification.md) for API contracts
-
-For migration:
-
-1. Follow the [Migration Guide](./migration-guide.md) step by step
-2. Use the test suite to verify compatibility
-3. Reference the technical docs for any differences
+3. Check the [Error Handling Guide](./error-handling-guide.md) for debugging
 
 ## Document Maintenance
 
@@ -86,4 +58,4 @@ To contribute to the documentation:
 
 ## Version
 
-This documentation reflects Knowledge MCP Server v0.1.0 (TypeScript implementation).
+This documentation reflects Knowledge MCP Server v0.1.1 (TypeScript implementation).

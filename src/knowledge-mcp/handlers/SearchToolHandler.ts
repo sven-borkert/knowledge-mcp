@@ -2,6 +2,7 @@ import type { z } from 'zod';
 
 import { searchDocuments } from '../documents.js';
 import type { SearchResult } from '../documents.js';
+import { MCPError, MCPErrorCode } from '../errors/index.js';
 import type { secureProjectIdSchema, secureSearchQuerySchema } from '../schemas/validation.js';
 import { getProjectDirectory } from '../utils.js';
 
@@ -15,6 +16,8 @@ export class SearchToolHandler extends BaseHandler {
     project_id: z.infer<typeof secureProjectIdSchema>;
     query: z.infer<typeof secureSearchQuerySchema>;
   }): string {
+    const context = this.createContext('search_knowledge', params);
+
     try {
       const { project_id, query } = params;
       const [, projectPath] = getProjectDirectory(this.storagePath, project_id);
@@ -37,23 +40,35 @@ export class SearchToolHandler extends BaseHandler {
         })),
       }));
 
-      this.logSuccess('search_knowledge', { project_id });
+      this.logSuccess('search_knowledge', { project_id }, context);
       return this.formatSuccessResponse({
         total_documents: transformedResults.length,
         total_matches: results.reduce((sum, r) => sum + r.match_count, 0),
         results: transformedResults,
       });
     } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : String(error);
+      const mcpError =
+        error instanceof MCPError
+          ? error
+          : new MCPError(
+              MCPErrorCode.INTERNAL_ERROR,
+              `Search failed: ${error instanceof Error ? error.message : String(error)}`,
+              {
+                project_id: params.project_id,
+                query: params.query,
+                traceId: context.traceId,
+              }
+            );
       this.logError(
         'search_knowledge',
         {
           project_id: params.project_id,
           query: params.query,
         },
-        errorMsg
+        mcpError,
+        context
       );
-      return this.formatErrorResponse(errorMsg);
+      return this.formatErrorResponse(mcpError, context);
     }
   }
 }

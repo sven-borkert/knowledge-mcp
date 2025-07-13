@@ -391,6 +391,32 @@ export function initializeStorage(storagePath: string): void {
 }
 
 /**
+ * Check if git remote "origin" exists in the repository.
+ */
+export function hasGitRemote(repoPath: string): boolean {
+  try {
+    const { stdout } = gitCommand(repoPath, 'remote', 'get-url', 'origin');
+    return stdout.trim().length > 0;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Push changes to origin/main.
+ */
+export function pushToOrigin(repoPath: string): void {
+  try {
+    gitCommand(repoPath, 'push', 'origin', 'main');
+  } catch (error) {
+    // Log error but don't fail the operation
+    console.error(
+      `Git push failed: ${error instanceof Error ? error.message : String(error)}`
+    );
+  }
+}
+
+/**
  * Automatically commit all changes in the repository.
  */
 export function autoCommit(repoPath: string, message: string): void {
@@ -404,6 +430,11 @@ export function autoCommit(repoPath: string, message: string): void {
     if (stdout.trim()) {
       // Commit changes
       gitCommand(repoPath, 'commit', '-m', message);
+      
+      // Push to origin if it exists
+      if (hasGitRemote(repoPath)) {
+        pushToOrigin(repoPath);
+      }
     }
   } catch (error) {
     // Log error but don't fail the operation
@@ -708,6 +739,34 @@ export async function initializeStorageAsync(storagePath: string): Promise<void>
 }
 
 /**
+ * Async version of hasGitRemote.
+ * Check if git remote "origin" exists in the repository.
+ */
+export async function hasGitRemoteAsync(repoPath: string): Promise<boolean> {
+  try {
+    const { stdout } = await gitCommandAsync(repoPath, 'remote', 'get-url', 'origin');
+    return stdout.trim().length > 0;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Async version of pushToOrigin.
+ * Push changes to origin/main.
+ */
+export async function pushToOriginAsync(repoPath: string): Promise<void> {
+  try {
+    await gitCommandAsync(repoPath, 'push', 'origin', 'main');
+  } catch (error) {
+    // Log error but don't fail the operation
+    console.error(
+      `Git push failed: ${error instanceof Error ? error.message : String(error)}`
+    );
+  }
+}
+
+/**
  * Async version of autoCommit.
  * Automatically commit all changes in the repository.
  */
@@ -722,6 +781,11 @@ export async function autoCommitAsync(repoPath: string, message: string): Promis
     if (stdout.trim()) {
       // Commit changes
       await gitCommandAsync(repoPath, 'commit', '-m', message);
+      
+      // Push to origin if it exists
+      if (await hasGitRemoteAsync(repoPath)) {
+        await pushToOriginAsync(repoPath);
+      }
     }
   } catch (error) {
     // Log error but don't fail the operation

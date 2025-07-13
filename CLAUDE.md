@@ -20,14 +20,14 @@ claude mcp list | grep sequential-thinking   # ✅ MUST show sequential-thinking
 claude mcp add --transport sse context7 https://mcp.context7.com/sse
 
 # Install Sequential Thinking for problem solving
-claude mcp add --scope project sequential-thinking npx -y @modelcontextprotocol/server-sequential-thinking
+claude mcp add --scope project sequential-thinking npx @modelcontextprotocol/server-sequential-thinking
 ```
 
 ### 2️⃣ Install Dependencies and Build
 
 ```bash
-ppnpm install            # Install Node.js dependencies
-ppnpm run build          # Build TypeScript to JavaScript
+pnpm install            # Install Node.js dependencies
+pnpm run build          # Build TypeScript to JavaScript
 ```
 
 ### 3️⃣ Verify Your Location
@@ -46,12 +46,11 @@ pwd  # ALWAYS check location before using relative paths!
 knowledge-mcp/
 ├── src/
 │   └── knowledge-mcp/         # TypeScript source
-│       ├── index.ts           # Entry point
+│       ├── index.ts           # Entry point with shebang
 │       ├── server.ts          # MCP server implementation
 │       ├── utils.ts           # Security & utility functions
 │       ├── utils/
-│       │   ├── tracing.ts     # Request tracing utilities
-│       │   └── retry.ts       # Retry mechanism with backoff
+│       │   └── tracing.ts     # Request tracing utilities
 │       ├── errors/
 │       │   ├── index.ts       # Error exports
 │       │   └── MCPError.ts    # Standardized error class
@@ -69,17 +68,18 @@ knowledge-mcp/
 ├── test/                      # Test suite
 │   └── interface-test.ts      # MCP interface tests
 ├── docs/                      # Documentation
+│   ├── README.md              # Documentation index
 │   ├── technical-specification.md
 │   ├── mcp-interface-test-plan.md
-│   └── typescript-testing-guide.md
+│   └── error-handling-guide.md
 ├── TODO/                      # Task tracking
 │   └── XXX-Description.md
 ├── node_modules/              # NPM packages (git-ignored)
 ├── package.json               # Node.js configuration
 ├── tsconfig.json              # TypeScript configuration
 ├── CLAUDE.md                  # This file
-├── README.md
-└── .gitignore
+├── README.md                  # Project documentation
+└── .gitignore                 # Git ignore patterns
 ```
 
 ### Import Rules
@@ -100,7 +100,6 @@ The project uses a comprehensive error handling system with:
 
 - **Typed Error Codes**: All errors use standardized `MCPErrorCode` enum values
 - **Request Tracing**: Every request gets a unique trace ID for debugging
-- **Automatic Retries**: Transient errors are retried with exponential backoff
 - **Consistent Responses**: All errors return the same response structure
 
 ### Error Response Format
@@ -123,8 +122,8 @@ The project uses a comprehensive error handling system with:
 - `PROJECT_NOT_FOUND` - Project doesn't exist
 - `DOCUMENT_NOT_FOUND` - Knowledge file not found
 - `FILE_ALREADY_EXISTS` - File already exists
-- `FILE_SYSTEM_ERROR` - File operation failed (automatically retried)
-- `GIT_ERROR` - Git operation failed (automatically retried)
+- `FILE_SYSTEM_ERROR` - File operation failed
+- `GIT_ERROR` - Git operation failed
 - `INVALID_INPUT` - Input validation failed
 
 ### Error Handling Best Practices
@@ -146,21 +145,6 @@ throw new Error('Project not found');
 - Error responses include trace IDs in context
 - Use trace ID to correlate logs: `grep "traceId" ~/.knowledge-mcp/activity.log`
 - Request duration tracked for performance debugging
-
-### Retry Configuration
-
-```typescript
-// Automatically retried errors:
-- FILE_SYSTEM_ERROR (file operations)
-- GIT_ERROR (git commands)
-- STORAGE_ERROR (storage operations)
-
-// Retry settings:
-- Max attempts: 3
-- Initial delay: 100ms
-- Max delay: 5000ms
-- Backoff: 2x multiplier
-```
 
 ---
 
@@ -374,12 +358,22 @@ node dist/knowledge-mcp/index.js
 - ✅ Input validation with Zod schemas
 - ✅ Atomic file writes (temp file + rename)
 
-#### 4. **Activity Logging**
+#### 4. **Activity Logging & Tracing**
 
 - ✅ All method calls logged to `activity.log`
+- ✅ Unique trace IDs for every request
+- ✅ Request duration tracking
 - ✅ Tracks project IDs, filenames, and success/failure
 - ✅ Content excluded for privacy protection
 - ✅ Log file automatically added to `.gitignore`
+
+#### 5. **Git Integration**
+
+- ✅ Automatic commits for all write operations
+- ✅ Descriptive commit messages
+- ✅ Automatic push to origin/main when configured
+- ✅ Graceful handling of push failures
+- ✅ Works offline (push failures don't break operations)
 
 ### API Design
 
@@ -387,9 +381,12 @@ node dist/knowledge-mcp/index.js
 
 - `get_project_main` - Retrieve main.md content
 - `update_project_main` - Update main.md content
+- `update_project_section` - Update specific section in main.md
+- `remove_project_section` - Remove specific section from main.md
 - `search_knowledge` - Search across knowledge files
 - `create_knowledge_file` - Create new knowledge document
 - `update_chapter` - Update specific chapter in document
+- `remove_chapter` - Remove specific chapter from document
 - `get_knowledge_file` - Retrieve complete document with all content
 - `delete_knowledge_file` - Remove knowledge document
 

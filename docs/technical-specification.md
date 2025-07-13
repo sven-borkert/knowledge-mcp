@@ -330,7 +330,7 @@ Lists all chapters in a specific knowledge file.
 
 ### Error Handling
 
-The TypeScript implementation uses a standardized error handling system with typed error codes, request tracing, and automatic retry mechanisms.
+The TypeScript implementation uses a standardized error handling system with typed error codes and request tracing.
 
 #### Error Response Format
 
@@ -374,9 +374,6 @@ The system uses typed error codes for consistent error handling:
 - `GIT_COMMAND_FAILED` - Git command execution failed
 - `SEARCH_ERROR` - Search operation failed
 - `INVALID_SEARCH_QUERY` - Invalid search query format
-- `RATE_LIMIT_EXCEEDED` - Too many requests
-- `STORAGE_ERROR` - Storage operation failed
-- `STORAGE_INITIALIZATION_FAILED` - Storage initialization failed
 
 #### Request Tracing
 
@@ -386,17 +383,6 @@ Every request is assigned a unique trace ID for debugging:
 - All log entries include the trace ID
 - Error responses include the trace ID in context
 - Request duration is tracked and logged
-
-#### Automatic Retry Mechanism
-
-Transient errors are automatically retried with exponential backoff:
-
-- **Retryable errors**: `FILE_SYSTEM_ERROR`, `GIT_ERROR`, `STORAGE_ERROR`
-- **Max attempts**: 3 (configurable)
-- **Initial delay**: 100ms
-- **Max delay**: 5000ms
-- **Backoff multiplier**: 2x
-- **File system specific**: EAGAIN, EBUSY, EMFILE, ENFILE errors are retried
 
 #### Error Logging
 
@@ -554,13 +540,19 @@ tail -10 activity.log | jq .
 
 ### Git Integration
 
-Every write operation triggers a Git commit:
+Every write operation triggers a Git commit and optional push:
 
-- Format: `"Update knowledge for {project-id}: {operation}"`
-- Examples:
+- **Commit Format**: `"Update knowledge for {project-id}: {operation}"`
+- **Examples**:
   - `"Update knowledge for my-app: Created authentication.md"`
   - `"Update knowledge for frontend: Updated chapter 'React Hooks' in patterns.md"`
   - `"Update knowledge for backend: Deleted deprecated-api.md"`
+
+- **Automatic Push**: If a git remote named "origin" is configured:
+  - Changes are automatically pushed to `origin/main` after each commit
+  - Push failures are logged but don't interrupt the operation
+  - Requires user to have appropriate git credentials configured
+  - Network failures don't affect local functionality
 
 ### Server Configuration
 

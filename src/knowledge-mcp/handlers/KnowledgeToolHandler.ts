@@ -122,6 +122,8 @@ export class KnowledgeToolHandler extends BaseHandler {
     project_id: z.infer<typeof secureProjectIdSchema>;
     filename: z.infer<typeof secureFilenameSchema>;
   }): string {
+    const context = this.createContext('get_knowledge_file', params);
+
     try {
       const { project_id, filename } = params;
       const [originalId, projectPath] = getProjectDirectory(this.storagePath, project_id);
@@ -130,7 +132,11 @@ export class KnowledgeToolHandler extends BaseHandler {
 
       // Check if file exists
       if (!existsSync(filePath)) {
-        throw new Error(`Knowledge file ${filename} not found in project ${originalId}`);
+        throw new MCPError(
+          MCPErrorCode.DOCUMENT_NOT_FOUND,
+          `Knowledge file ${filename} not found in project ${originalId}`,
+          { project_id, filename, traceId: context.traceId }
+        );
       }
 
       // Read the entire file
@@ -153,7 +159,7 @@ export class KnowledgeToolHandler extends BaseHandler {
           };
         });
 
-      this.logSuccess('get_knowledge_file', { project_id, filename });
+      this.logSuccess('get_knowledge_file', { project_id, filename }, context);
       return this.formatSuccessResponse({
         document: {
           filename,
@@ -163,16 +169,28 @@ export class KnowledgeToolHandler extends BaseHandler {
         },
       });
     } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : String(error);
+      const mcpError =
+        error instanceof MCPError
+          ? error
+          : new MCPError(
+              MCPErrorCode.DOCUMENT_NOT_FOUND,
+              `Failed to get knowledge file: ${error instanceof Error ? error.message : String(error)}`,
+              {
+                project_id: params.project_id,
+                filename: params.filename,
+                traceId: context.traceId,
+              }
+            );
       this.logError(
         'get_knowledge_file',
         {
           project_id: params.project_id,
           filename: params.filename,
         },
-        errorMsg
+        mcpError,
+        context
       );
-      return this.formatErrorResponse(errorMsg);
+      return this.formatErrorResponse(mcpError, context);
     }
   }
 
@@ -183,6 +201,8 @@ export class KnowledgeToolHandler extends BaseHandler {
     project_id: z.infer<typeof secureProjectIdSchema>;
     filename: z.infer<typeof secureFilenameSchema>;
   }): string {
+    const context = this.createContext('delete_knowledge_file', params);
+
     try {
       const { project_id, filename } = params;
       const [originalId, projectPath] = getProjectDirectory(this.storagePath, project_id);
@@ -191,7 +211,11 @@ export class KnowledgeToolHandler extends BaseHandler {
 
       // Check if file exists
       if (!existsSync(filePath)) {
-        throw new Error(`Knowledge file ${filename} not found in project ${originalId}`);
+        throw new MCPError(
+          MCPErrorCode.DOCUMENT_NOT_FOUND,
+          `Knowledge file ${filename} not found in project ${originalId}`,
+          { project_id, filename, traceId: context.traceId }
+        );
       }
 
       // Delete the file
@@ -200,21 +224,33 @@ export class KnowledgeToolHandler extends BaseHandler {
       // Auto-commit
       autoCommit(this.storagePath, `Delete knowledge file ${filename} from ${originalId}`);
 
-      this.logSuccess('delete_knowledge_file', { project_id, filename });
+      this.logSuccess('delete_knowledge_file', { project_id, filename }, context);
       return this.formatSuccessResponse({
         message: `Knowledge file ${filename} deleted from project ${originalId}`,
       });
     } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : String(error);
+      const mcpError =
+        error instanceof MCPError
+          ? error
+          : new MCPError(
+              MCPErrorCode.FILE_SYSTEM_ERROR,
+              `Failed to delete knowledge file: ${error instanceof Error ? error.message : String(error)}`,
+              {
+                project_id: params.project_id,
+                filename: params.filename,
+                traceId: context.traceId,
+              }
+            );
       this.logError(
         'delete_knowledge_file',
         {
           project_id: params.project_id,
           filename: params.filename,
         },
-        errorMsg
+        mcpError,
+        context
       );
-      return this.formatErrorResponse(errorMsg);
+      return this.formatErrorResponse(mcpError, context);
     }
   }
 }

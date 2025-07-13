@@ -396,6 +396,8 @@ export class ProjectToolHandler extends BaseHandler {
     section_header: z.infer<typeof secureSectionHeaderSchema>;
     new_content: z.infer<typeof secureContentSchema>;
   }): Promise<string> {
+    const context = this.createContext('update_project_section', params);
+
     try {
       const { project_id, section_header, new_content } = params;
       const [originalId, projectPath] = await getProjectDirectoryAsync(
@@ -407,7 +409,11 @@ export class ProjectToolHandler extends BaseHandler {
       try {
         await access(mainFile);
       } catch {
-        throw new Error(`Project ${originalId} does not exist`);
+        throw new MCPError(MCPErrorCode.PROJECT_NOT_FOUND, `Project ${originalId} does not exist`, {
+          project_id,
+          section_header,
+          traceId: context.traceId,
+        });
       }
 
       const content = await readFile(mainFile, 'utf8');
@@ -432,7 +438,11 @@ export class ProjectToolHandler extends BaseHandler {
       }
 
       if (sectionStart === -1) {
-        throw new Error(`Section "${section_header}" not found in project main`);
+        throw new MCPError(
+          MCPErrorCode.SECTION_NOT_FOUND,
+          `Section "${section_header}" not found in project main`,
+          { project_id, section_header, traceId: context.traceId }
+        );
       }
 
       // Replace the section content
@@ -452,21 +462,33 @@ export class ProjectToolHandler extends BaseHandler {
         `Update section "${section_header}" in ${originalId}`
       );
 
-      await this.logSuccessAsync('update_project_section', { project_id, section_header });
+      await this.logSuccessAsync('update_project_section', { project_id, section_header }, context);
       return this.formatSuccessResponse({
         message: `Section "${section_header}" updated in project ${originalId}`,
       });
     } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : String(error);
+      const mcpError =
+        error instanceof MCPError
+          ? error
+          : new MCPError(
+              MCPErrorCode.INTERNAL_ERROR,
+              `Failed to update project section: ${error instanceof Error ? error.message : String(error)}`,
+              {
+                project_id: params.project_id,
+                section_header: params.section_header,
+                traceId: context.traceId,
+              }
+            );
       await this.logErrorAsync(
         'update_project_section',
         {
           project_id: params.project_id,
           section_header: params.section_header,
         },
-        errorMsg
+        mcpError,
+        context
       );
-      return this.formatErrorResponse(errorMsg);
+      return this.formatErrorResponse(mcpError, context);
     }
   }
 
@@ -477,6 +499,8 @@ export class ProjectToolHandler extends BaseHandler {
     project_id: z.infer<typeof secureProjectIdSchema>;
     section_header: z.infer<typeof secureSectionHeaderSchema>;
   }): Promise<string> {
+    const context = this.createContext('remove_project_section', params);
+
     try {
       const { project_id, section_header } = params;
       const [originalId, projectPath] = await getProjectDirectoryAsync(
@@ -488,7 +512,11 @@ export class ProjectToolHandler extends BaseHandler {
       try {
         await access(mainFile);
       } catch {
-        throw new Error(`Project ${originalId} does not exist`);
+        throw new MCPError(MCPErrorCode.PROJECT_NOT_FOUND, `Project ${originalId} does not exist`, {
+          project_id,
+          section_header,
+          traceId: context.traceId,
+        });
       }
 
       const content = await readFile(mainFile, 'utf8');
@@ -513,7 +541,11 @@ export class ProjectToolHandler extends BaseHandler {
       }
 
       if (sectionStart === -1) {
-        throw new Error(`Section "${section_header}" not found in project main`);
+        throw new MCPError(
+          MCPErrorCode.SECTION_NOT_FOUND,
+          `Section "${section_header}" not found in project main`,
+          { project_id, section_header, traceId: context.traceId }
+        );
       }
 
       // Remove the section
@@ -527,21 +559,33 @@ export class ProjectToolHandler extends BaseHandler {
         `Remove section "${section_header}" from ${originalId}`
       );
 
-      await this.logSuccessAsync('remove_project_section', { project_id, section_header });
+      await this.logSuccessAsync('remove_project_section', { project_id, section_header }, context);
       return this.formatSuccessResponse({
         message: `Section "${section_header}" removed from project ${originalId}`,
       });
     } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : String(error);
+      const mcpError =
+        error instanceof MCPError
+          ? error
+          : new MCPError(
+              MCPErrorCode.INTERNAL_ERROR,
+              `Failed to remove project section: ${error instanceof Error ? error.message : String(error)}`,
+              {
+                project_id: params.project_id,
+                section_header: params.section_header,
+                traceId: context.traceId,
+              }
+            );
       await this.logErrorAsync(
         'remove_project_section',
         {
           project_id: params.project_id,
           section_header: params.section_header,
         },
-        errorMsg
+        mcpError,
+        context
       );
-      return this.formatErrorResponse(errorMsg);
+      return this.formatErrorResponse(mcpError, context);
     }
   }
 }
