@@ -1,34 +1,44 @@
 # Knowledge MCP Server
 
-🚀 **Replace scattered CLAUDE.md files with a centralized, searchable knowledge base that Claude Code automatically uses across all your projects.**
+🚀 **Keep AI instruction files out of your project repositories by storing them in a centralized, searchable knowledge base that AI assistants can automatically access.**
 
-The Knowledge MCP Server provides persistent project-specific knowledge management through the Model Context Protocol. It automatically identifies projects, stores instructions and documentation, and makes them instantly searchable.
+The Knowledge MCP Server provides persistent project-specific knowledge management through the Model Context Protocol. It automatically identifies projects, stores instructions and documentation separately from your codebase, and makes them instantly searchable.
 
 ## ✨ Key Benefits
 
 - **Automatic Project Detection**: Identifies projects by git remote or directory name
-- **Replaces CLAUDE.md**: Centralized storage instead of per-project files
+- **Keeps Repositories Clean**: Stores AI instructions outside of project repositories
 - **Searchable Knowledge**: Find information across all project documents
 - **Persistent Memory**: Knowledge survives between sessions
+- **No Repository Pollution**: AI-specific files stay out of your codebase
 - **Version Controlled**: All changes tracked with Git
 - **Automatic Backup**: Changes pushed to origin/main when available
 - **Secure**: Path validation and input sanitization
 
-## 🚀 Quick Start (Claude Code Users)
+## 🚀 Quick Start
 
 ### 1. Install the MCP Server
 
-```bash
-# For global scope (all projects) - ensures latest version is always used
-claude mcp add knowledge-mcp npx -- -y @spothlynx/knowledge-mcp@latest
+The server can be installed in various ways depending on your MCP client:
 
-# For current project only
-claude mcp add --scope project knowledge-mcp npx -- -y @spothlynx/knowledge-mcp@latest
+#### Using NPM (Global Install)
+
+```bash
+npm install -g @spothlynx/knowledge-mcp
 ```
 
-### 2. Configure Claude Code for Automatic Usage
+#### From Source
 
-Add this to your `~/.claude/CLAUDE.md` file to make Claude Code automatically use the Knowledge MCP:
+```bash
+git clone https://github.com/sven-borkert/knowledge-mcp.git
+cd knowledge-mcp
+pnpm install
+pnpm run build
+```
+
+### 2. Configure Your MCP Client
+
+Configure your MCP client to automatically use the Knowledge MCP. For example, if your AI assistant supports global instruction files, you might add:
 
 ```markdown
 # 🧠 Knowledge MCP Auto-Usage
@@ -49,41 +59,29 @@ IMPORTANT: This system uses the Knowledge MCP Server for project knowledge.
 - create_knowledge_file - Document new learnings
 - update_chapter - Update existing documentation
 
-NEVER read local CLAUDE.md files directly - always use the Knowledge MCP.
+NEVER read local project instruction files directly - always use the Knowledge MCP.
 ```
 
-That's it! Claude Code will now automatically check for project knowledge at the start of every conversation.
+This configuration ensures your AI assistant will automatically check for project knowledge at the start of every conversation.
 
-## 📦 Alternative Installation Methods
+## 📦 Client-Specific Configuration Examples
 
-### From npm (global install)
-
-```bash
-npm install -g @spothlynx/knowledge-mcp
-```
-
-### From Source
+### Claude Code
 
 ```bash
-git clone https://github.com/sven-borkert/knowledge-mcp.git
-cd knowledge-mcp
-pnpm install
-pnpm run build
+# For global scope (all projects) - ensures latest version is always used
+claude mcp add knowledge-mcp npx -- -y @spothlynx/knowledge-mcp@latest
 
-# Add to Claude Code
+# For current project only
+claude mcp add --scope project knowledge-mcp npx -- -y @spothlynx/knowledge-mcp@latest
+
+# For development (using local build)
 claude mcp add knowledge-mcp node "$(pwd)/dist/knowledge-mcp/index.js"
 ```
 
-## 🔧 Configuration
+### Claude Desktop
 
-### Environment Variables
-
-- `KNOWLEDGE_MCP_HOME`: Storage directory (default: `~/.knowledge-mcp`)
-- `KNOWLEDGE_MCP_LOG_LEVEL`: Log level options: `ERROR`, `WARN`, `INFO`, `DEBUG` (default: `INFO`)
-
-### Claude Desktop Configuration
-
-For Claude Desktop users, add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
+Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
 
 ```json
 {
@@ -95,6 +93,30 @@ For Claude Desktop users, add to `~/Library/Application Support/Claude/claude_de
   }
 }
 ```
+
+### Generic MCP Configuration
+
+For other MCP-compatible clients, configure the server with:
+
+```json
+{
+  "mcpServers": {
+    "knowledge-mcp": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@spothlynx/knowledge-mcp@latest"],
+      "env": {}
+    }
+  }
+}
+```
+
+## 🔧 Configuration
+
+### Environment Variables
+
+- `KNOWLEDGE_MCP_HOME`: Storage directory (default: `~/.knowledge-mcp`)
+- `KNOWLEDGE_MCP_LOG_LEVEL`: Log level options: `ERROR`, `WARN`, `INFO`, `DEBUG` (default: `INFO`)
 
 ## 📖 How It Works
 
@@ -113,8 +135,8 @@ Example: `/path/to/my-awesome-project/.git` → project_id = "my-awesome-project
 # 1. Navigate to your project
 cd ~/projects/my-app
 
-# 2. Claude Code automatically calls get_project_main("my-app")
-# 3. If no knowledge exists, it migrates your local CLAUDE.md
+# 2. Your AI assistant automatically calls get_project_main("my-app")
+# 3. Knowledge is retrieved from central storage, not from your repository
 # 4. All future sessions use the centralized knowledge
 ```
 
@@ -126,7 +148,7 @@ cd ~/projects/my-app
 ├── index.json                 # Project name mapping
 └── projects/
     └── my-app/
-        ├── main.md            # Project instructions (replaces CLAUDE.md)
+        ├── main.md            # Project instructions (stored centrally, not in repository)
         └── knowledge/
             ├── api-guide.md   # Structured knowledge documents
             └── architecture.md
@@ -252,20 +274,20 @@ claude mcp add knowledge-mcp npx -- -y @spothlynx/knowledge-mcp@latest
 
 ### Understanding Configuration Levels
 
-Claude Code loads MCP configurations in this precedence order (highest to lowest):
+Most MCP clients support multiple configuration levels. For example, in Claude Code:
 
-1. **User-level (Global)**: Added with `claude mcp add` - applies to all projects
-2. **Project-level**: Added with `claude mcp add --scope project` - applies to current project
-3. **`.mcp.json` file**: Manual configuration file - only loaded when explicitly specified
+1. **User-level (Global)**: Applies to all projects
+2. **Project-level**: Applies to current project only
+3. **Configuration files**: Manual configuration files (e.g., `.mcp.json`)
 
-**Important**: User-level configurations always override project configurations and `.mcp.json` files.
+**Important**: Higher-level configurations typically override lower-level ones. Check your MCP client's documentation for specific precedence rules.
 
 ### Verifying Your Current Version
 
-To check which version of Knowledge MCP is currently active:
+To check which version of Knowledge MCP is currently active, use your MCP client's listing command. For example:
 
 ```bash
-# Check active MCP servers
+# Claude Code example:
 claude mcp list | grep knowledge-mcp
 
 # For development: Should show local path
@@ -282,6 +304,7 @@ claude mcp list | grep knowledge-mcp
 Always use the `@latest` tag to bypass npx cache:
 
 ```bash
+# Example for Claude Code:
 # Remove any existing configuration
 claude mcp remove knowledge-mcp -s local  # Remove global config
 claude mcp remove knowledge-mcp -s project # Remove project config
@@ -295,14 +318,14 @@ claude mcp add knowledge-mcp npx -- -y @spothlynx/knowledge-mcp@latest
 When developing or testing local changes:
 
 ```bash
-# Point to your local build
+# Point to your local build (example for Claude Code)
 claude mcp add knowledge-mcp node /path/to/knowledge-mcp/dist/knowledge-mcp/index.js
 
 # After making changes, rebuild
 cd /path/to/knowledge-mcp
 pnpm run build
 
-# Restart Claude Code to load the updated build
+# Restart your MCP client to load the updated build
 ```
 
 ### Troubleshooting Version Issues
@@ -312,6 +335,7 @@ If you're not getting the expected version:
 1. **Check all configuration scopes**:
 
    ```bash
+   # Example for Claude Code:
    claude mcp list  # Shows all configurations
    ```
 
@@ -328,8 +352,8 @@ If you're not getting the expected version:
 
 3. **Verify the loaded version**:
    ```bash
-   # Check server info (run in Claude Code)
-   /mcp
+   # Check server info using your MCP client
+   # For example, in Claude Code: /mcp
    # Look for "Knowledge MCP Server" version number
    ```
 
@@ -348,7 +372,7 @@ If you're not getting the expected version:
 1. **"spawn npx ENOENT" or "Connection closed"**
 
    ```bash
-   # Remove and re-add to ensure latest version
+   # Remove and re-add to ensure latest version (example for Claude Code)
    claude mcp remove knowledge-mcp
    claude mcp add knowledge-mcp npx -- -y @spothlynx/knowledge-mcp@latest
    ```
@@ -363,8 +387,9 @@ If you're not getting the expected version:
 3. **Check logs for debugging**
 
    ```bash
-   # View MCP logs
-   ls ~/Library/Caches/claude-cli-nodejs/*/mcp-logs-knowledge-mcp/
+   # View MCP logs (location varies by client)
+   # For Claude Code:
+   # ls ~/Library/Caches/claude-cli-nodejs/*/mcp-logs-knowledge-mcp/
 
    # View activity logs with trace IDs
    tail -f ~/.knowledge-mcp/activity.log
@@ -409,11 +434,11 @@ npx @modelcontextprotocol/inspector node dist/knowledge-mcp/index.js
 ## 📦 Updates
 
 ```bash
-# Update to latest version
-claude mcp update knowledge-mcp
-
-# Or with npm
+# Update using npm
 npm update -g @spothlynx/knowledge-mcp
+
+# Or for Claude Code users:
+claude mcp update knowledge-mcp
 ```
 
 ## 🤝 Contributing
