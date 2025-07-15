@@ -1,6 +1,6 @@
 {
   "name": "@spothlynx/knowledge-mcp",
-  "version": "0.2.4",
+  "version": "0.3.0",
   "description": "Centralized project knowledge management via Model Context Protocol",
   "type": "module",
   "main": "dist/knowledge-mcp/index.js",

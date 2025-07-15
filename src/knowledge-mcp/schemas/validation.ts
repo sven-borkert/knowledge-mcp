@@ -87,3 +87,24 @@ export const secureChapterSummarySchema = z
   .string()
   .max(500, 'Chapter summary too long (max 500 characters)')
   .refine((val) => !val.includes('\0'), 'Chapter summary cannot contain null bytes');
+
+// TODO Management schemas
+export const secureTodoNumberSchema = z
+  .number()
+  .int('TODO number must be an integer')
+  .positive('TODO number must be positive')
+  .max(99999, 'TODO number too large');
+
+export const secureTodoDescriptionSchema = z
+  .string()
+  .min(1, 'TODO description cannot be empty')
+  .max(500, 'TODO description too long (max 500 characters)')
+  .refine((val) => !val.includes('\0'), 'TODO description cannot contain null bytes')
+  .refine((val) => val.trim() === val, 'TODO description cannot have leading/trailing spaces');
+
+export const secureTaskDescriptionSchema = z
+  .string()
+  .min(1, 'Task description cannot be empty')
+  .max(500, 'Task description too long (max 500 characters)')
+  .refine((val) => !val.includes('\0'), 'Task description cannot contain null bytes')
+  .refine((val) => val.trim() === val, 'Task description cannot have leading/trailing spaces');

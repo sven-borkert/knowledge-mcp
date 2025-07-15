@@ -9,6 +9,7 @@ import { ProjectToolHandler } from './handlers/ProjectToolHandler.js';
 import { ResourceHandler } from './handlers/ResourceHandler.js';
 import { SearchToolHandler } from './handlers/SearchToolHandler.js';
 import { ServerToolHandler } from './handlers/ServerToolHandler.js';
+import { TodoToolHandler } from './handlers/TodoToolHandler.js';
 import {
   secureProjectIdSchema,
   secureContentSchema,
@@ -21,6 +22,9 @@ import {
   secureTitleSchema,
   secureIntroductionSchema,
   secureChapterSummarySchema,
+  secureTodoNumberSchema,
+  secureTodoDescriptionSchema,
+  secureTaskDescriptionSchema,
 } from './schemas/validation.js';
 import { initializeStorageAsync } from './utils.js';
 
@@ -31,6 +35,7 @@ const searchHandler = new SearchToolHandler();
 const chapterHandler = new ChapterToolHandler();
 const resourceHandler = new ResourceHandler();
 const serverHandler = new ServerToolHandler();
+const todoHandler = new TodoToolHandler();
 
 // Initialize server
 const server = new McpServer(SERVER_CONFIG);
@@ -383,6 +388,181 @@ Returns: {success: bool, message: str, files_committed: int, pushed: bool, push_
       {
         type: 'text',
         text: serverHandler.syncStorage(),
+      },
+    ],
+  })
+);
+
+// TODO Management tools
+server.registerTool(
+  'list_todos',
+  {
+    title: 'List TODOs',
+    description: `List all TODO lists in a project with their completion status.
+Returns: {success: bool, todos: [...], error?: str}`,
+    inputSchema: {
+      project_id: secureProjectIdSchema.describe('The project identifier'),
+    },
+  },
+  ({ project_id }) => ({
+    content: [
+      {
+        type: 'text',
+        text: todoHandler.listTodos({ project_id }),
+      },
+    ],
+  })
+);
+
+server.registerTool(
+  'create_todo',
+  {
+    title: 'Create TODO',
+    description: `Create a new TODO list with optional initial tasks.
+Returns: {success: bool, todo_number: int, message: str, error?: str}`,
+    inputSchema: {
+      project_id: secureProjectIdSchema.describe('The project identifier'),
+      description: secureTodoDescriptionSchema.describe('Description of the TODO list'),
+      tasks: z
+        .array(secureTaskDescriptionSchema)
+        .optional()
+        .describe('Optional initial task descriptions'),
+    },
+  },
+  ({ project_id, description, tasks }) => ({
+    content: [
+      {
+        type: 'text',
+        text: todoHandler.createTodo({ project_id, description, tasks }),
+      },
+    ],
+  })
+);
+
+server.registerTool(
+  'add_todo_task',
+  {
+    title: 'Add TODO Task',
+    description: `Add a new task to an existing TODO list.
+Returns: {success: bool, task_number: int, message: str, error?: str}`,
+    inputSchema: {
+      project_id: secureProjectIdSchema.describe('The project identifier'),
+      todo_number: secureTodoNumberSchema.describe('The TODO list number'),
+      description: secureTaskDescriptionSchema.describe('Description of the task'),
+    },
+  },
+  ({ project_id, todo_number, description }) => ({
+    content: [
+      {
+        type: 'text',
+        text: todoHandler.addTodoTask({ project_id, todo_number, description }),
+      },
+    ],
+  })
+);
+
+server.registerTool(
+  'remove_todo_task',
+  {
+    title: 'Remove TODO Task',
+    description: `Remove a task from a TODO list.
+Returns: {success: bool, message: str, error?: str}`,
+    inputSchema: {
+      project_id: secureProjectIdSchema.describe('The project identifier'),
+      todo_number: secureTodoNumberSchema.describe('The TODO list number'),
+      task_number: secureTodoNumberSchema.describe('The task number to remove'),
+    },
+  },
+  ({ project_id, todo_number, task_number }) => ({
+    content: [
+      {
+        type: 'text',
+        text: todoHandler.removeTodoTask({ project_id, todo_number, task_number }),
+      },
+    ],
+  })
+);
+
+server.registerTool(
+  'complete_todo_task',
+  {
+    title: 'Complete TODO Task',
+    description: `Mark a task as completed in a TODO list.
+Returns: {success: bool, message: str, error?: str}`,
+    inputSchema: {
+      project_id: secureProjectIdSchema.describe('The project identifier'),
+      todo_number: secureTodoNumberSchema.describe('The TODO list number'),
+      task_number: secureTodoNumberSchema.describe('The task number to complete'),
+    },
+  },
+  ({ project_id, todo_number, task_number }) => ({
+    content: [
+      {
+        type: 'text',
+        text: todoHandler.completeTodoTask({ project_id, todo_number, task_number }),
+      },
+    ],
+  })
+);
+
+server.registerTool(
+  'get_next_todo_task',
+  {
+    title: 'Get Next TODO Task',
+    description: `Get the next incomplete task in a TODO list.
+Returns: {success: bool, task?: {number: int, description: str}, message?: str, error?: str}`,
+    inputSchema: {
+      project_id: secureProjectIdSchema.describe('The project identifier'),
+      todo_number: secureTodoNumberSchema.describe('The TODO list number'),
+    },
+  },
+  ({ project_id, todo_number }) => ({
+    content: [
+      {
+        type: 'text',
+        text: todoHandler.getNextTodoTask({ project_id, todo_number }),
+      },
+    ],
+  })
+);
+
+server.registerTool(
+  'get_todo_tasks',
+  {
+    title: 'Get TODO Tasks',
+    description: `Get all tasks in a TODO list with their completion status.
+Returns: {success: bool, todo: {...}, tasks: [...], error?: str}`,
+    inputSchema: {
+      project_id: secureProjectIdSchema.describe('The project identifier'),
+      todo_number: secureTodoNumberSchema.describe('The TODO list number'),
+    },
+  },
+  ({ project_id, todo_number }) => ({
+    content: [
+      {
+        type: 'text',
+        text: todoHandler.getTodoTasks({ project_id, todo_number }),
+      },
+    ],
+  })
+);
+
+server.registerTool(
+  'delete_todo',
+  {
+    title: 'Delete TODO',
+    description: `Delete an entire TODO list and all its tasks.
+Returns: {success: bool, message: str, error?: str}`,
+    inputSchema: {
+      project_id: secureProjectIdSchema.describe('The project identifier'),
+      todo_number: secureTodoNumberSchema.describe('The TODO list number to delete'),
+    },
+  },
+  ({ project_id, todo_number }) => ({
+    content: [
+      {
+        type: 'text',
+        text: todoHandler.deleteTodo({ project_id, todo_number }),
       },
     ],
   })

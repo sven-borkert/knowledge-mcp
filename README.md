@@ -14,6 +14,7 @@ The Knowledge MCP Server provides persistent project-specific knowledge manageme
 - **Version Controlled**: All changes tracked with Git
 - **Automatic Backup**: Changes pushed to origin/main when available
 - **Secure**: Path validation and input sanitization
+- **TODO Management**: Track development tasks per project with sequential numbering
 
 ## 🚀 Quick Start
 
@@ -59,10 +60,45 @@ IMPORTANT: This system uses the Knowledge MCP Server for project knowledge.
 - create_knowledge_file - Document new learnings
 - update_chapter - Update existing documentation
 
+## TODO Management (Use only when explicitly requested):
+
+- list_todos - See all TODO lists when user asks to check TODOs
+- create_todo - Create TODO list when user asks to save a plan
+- get_next_todo_task - Use when working through a TODO list
+- complete_todo_task - Mark tasks done as you complete them
+
 NEVER read local project instruction files directly - always use the Knowledge MCP.
 ```
 
 This configuration ensures your AI assistant will automatically check for project knowledge at the start of every conversation.
+
+### Using TODO Management
+
+The Knowledge MCP includes a built-in TODO management system for tracking development tasks. Use it only when explicitly requested:
+
+```markdown
+## TODO Usage Guidelines for AI Assistants:
+
+DO NOT automatically check or create TODOs. Only use TODO features when the user explicitly:
+- Asks to "save this plan as a TODO"
+- Says "work on TODO #X" or "continue with the TODO list"
+- Requests to "check my TODOs" or "list TODOs"
+
+When asked to work on a TODO:
+1. Get all tasks with get_todo_tasks(project_id, todo_number)
+2. Work through ALL incomplete tasks sequentially
+3. Use get_next_todo_task to identify what to do next
+4. Mark each task complete with complete_todo_task as you finish
+5. Continue until all tasks are done or you encounter a blocker
+
+Example scenarios:
+- User: "Save this plan as a TODO" → Create TODO with the plan's steps
+- User: "Work on TODO #1" → Get tasks and complete them all
+- User: "What TODOs do I have?" → List TODOs for the project
+- User: "Help me implement authentication" → DO NOT create a TODO unless asked
+```
+
+This ensures TODOs are used intentionally for explicit task tracking, not automatic workflow management.
 
 ## 📦 Client-Specific Configuration Examples
 
@@ -149,9 +185,14 @@ cd ~/projects/my-app
 └── projects/
     └── my-app/
         ├── main.md            # Project instructions (stored centrally, not in repository)
-        └── knowledge/
-            ├── api-guide.md   # Structured knowledge documents
-            └── architecture.md
+        ├── knowledge/
+        │   ├── api-guide.md   # Structured knowledge documents
+        │   └── architecture.md
+        └── TODO/              # TODO lists for the project
+            ├── 1/             # First TODO list
+            │   ├── index.json # TODO metadata
+            │   └── TASK-*.json # Individual task files
+            └── 2/             # Second TODO list
 ```
 
 ### Automatic Backup
@@ -226,6 +267,19 @@ This ensures your knowledge stays synchronized across devices but **local change
 | `get_storage_status`     | Get git storage status     | Monitor repository     |
 | `sync_storage`           | Force git sync             | Manual backup/push     |
 
+### TODO Management Tools
+
+| Tool                  | Purpose                    | Usage                     |
+| --------------------- | -------------------------- | ------------------------- |
+| `list_todos`          | List all TODO lists        | See project tasks         |
+| `create_todo`         | Create new TODO            | Start tracking tasks      |
+| `add_todo_task`       | Add task to TODO           | Expand existing TODO      |
+| `remove_todo_task`    | Remove a task              | Clean up mistakes         |
+| `complete_todo_task`  | Mark task as done          | Track progress            |
+| `get_next_todo_task`  | Get next incomplete task   | Focus on what's next      |
+| `get_todo_tasks`      | Get all tasks in TODO      | Review full TODO list     |
+| `delete_todo`         | Delete entire TODO         | Clean up completed TODOs  |
+
 ### Resources (Read-Only)
 
 - `knowledge://projects/{project_id}/main` - Read project instructions
@@ -248,6 +302,31 @@ This ensures your knowledge stays synchronized across devices but **local change
     }
   ]
 }
+```
+
+### Example: TODO Management Workflow
+
+```bash
+# 1. Create a TODO with initial tasks
+create_todo({
+  "project_id": "my-app",
+  "description": "Implement user authentication",
+  "tasks": ["Create user model", "Add password hashing", "Setup JWT tokens"]
+})
+
+# 2. Get the next task to work on
+get_next_todo_task({"project_id": "my-app", "todo_number": 1})
+# Returns: {"number": 1, "description": "Create user model"}
+
+# 3. Complete the task
+complete_todo_task({"project_id": "my-app", "todo_number": 1, "task_number": 1})
+
+# 4. Add a new task if needed
+add_todo_task({
+  "project_id": "my-app", 
+  "todo_number": 1,
+  "description": "Add email validation"
+})
 ```
 
 ## 📦 Version Management
@@ -401,6 +480,9 @@ If you're not getting the expected version:
 - `DOCUMENT_NOT_FOUND` - Knowledge file not found
 - `FILE_ALREADY_EXISTS` - File already exists
 - `INVALID_INPUT` - Invalid parameters
+- `TODO_NOT_FOUND` - TODO list doesn't exist
+- `TODO_TASK_NOT_FOUND` - Task not found in TODO list
+- `INVALID_TODO_NUMBER` - Invalid TODO number format
 
 See [Error Handling Guide](docs/error-handling-guide.md) for details.
 
