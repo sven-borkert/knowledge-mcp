@@ -19,7 +19,7 @@ import type {
   secureTodoDescriptionSchema,
   secureTaskDescriptionSchema,
 } from '../schemas/validation.js';
-import { getProjectDirectory, autoCommit } from '../utils.js';
+import { getProjectDirectory, createProjectEntry, autoCommit } from '../utils.js';
 
 import { BaseHandler } from './BaseHandler.js';
 
@@ -57,12 +57,21 @@ export class TodoToolHandler extends BaseHandler {
 
     try {
       const { project_id } = params;
-      const [, projectPath] = getProjectDirectory(this.storagePath, project_id);
+      const projectInfo = getProjectDirectory(this.storagePath, project_id);
+      
+      // Project doesn't exist - return empty list without creating ghost entry
+      if (!projectInfo) {
+        this.logSuccess('list_todos', { project_id }, context);
+        return this.formatSuccessResponse({ todos: [] });
+      }
+      
+      const [, projectPath] = projectInfo;
       const todoPath = join(projectPath, 'TODO');
 
-      // Create TODO directory if it doesn't exist
+      // If TODO directory doesn't exist, return empty list (don't create it for read-only operation)
       if (!existsSync(todoPath)) {
-        mkdirSync(todoPath, { recursive: true });
+        this.logSuccess('list_todos', { project_id }, context);
+        return this.formatSuccessResponse({ todos: [] });
       }
 
       // Scan for TODO directories
@@ -132,7 +141,8 @@ export class TodoToolHandler extends BaseHandler {
 
     try {
       const { project_id, description, tasks } = params;
-      const [, projectPath] = getProjectDirectory(this.storagePath, project_id);
+      // Use createProjectEntry for write operations that create new projects
+      const [, projectPath] = createProjectEntry(this.storagePath, project_id);
       const todoPath = join(projectPath, 'TODO');
 
       // Create TODO directory if it doesn't exist
@@ -196,7 +206,17 @@ export class TodoToolHandler extends BaseHandler {
 
     try {
       const { project_id, todo_number, description } = params;
-      const [, projectPath] = getProjectDirectory(this.storagePath, project_id);
+      const projectInfo = getProjectDirectory(this.storagePath, project_id);
+      
+      // Check if project exists
+      if (!projectInfo) {
+        throw new MCPError(MCPErrorCode.PROJECT_NOT_FOUND, `Project ${project_id} not found`, {
+          project_id,
+          traceId: context.traceId,
+        });
+      }
+      
+      const [, projectPath] = projectInfo;
       const todoDir = join(projectPath, 'TODO', String(todo_number));
 
       // Check if TODO exists
@@ -252,7 +272,17 @@ export class TodoToolHandler extends BaseHandler {
 
     try {
       const { project_id, todo_number, task_number } = params;
-      const [, projectPath] = getProjectDirectory(this.storagePath, project_id);
+      const projectInfo = getProjectDirectory(this.storagePath, project_id);
+      
+      // Check if project exists
+      if (!projectInfo) {
+        throw new MCPError(MCPErrorCode.PROJECT_NOT_FOUND, `Project ${project_id} not found`, {
+          project_id,
+          traceId: context.traceId,
+        });
+      }
+      
+      const [, projectPath] = projectInfo;
       const todoDir = join(projectPath, 'TODO', String(todo_number));
 
       // Check if TODO exists
@@ -305,7 +335,17 @@ export class TodoToolHandler extends BaseHandler {
 
     try {
       const { project_id, todo_number, task_number } = params;
-      const [, projectPath] = getProjectDirectory(this.storagePath, project_id);
+      const projectInfo = getProjectDirectory(this.storagePath, project_id);
+      
+      // Check if project exists
+      if (!projectInfo) {
+        throw new MCPError(MCPErrorCode.PROJECT_NOT_FOUND, `Project ${project_id} not found`, {
+          project_id,
+          traceId: context.traceId,
+        });
+      }
+      
+      const [, projectPath] = projectInfo;
       const todoDir = join(projectPath, 'TODO', String(todo_number));
 
       // Check if TODO exists
@@ -360,7 +400,17 @@ export class TodoToolHandler extends BaseHandler {
 
     try {
       const { project_id, todo_number } = params;
-      const [, projectPath] = getProjectDirectory(this.storagePath, project_id);
+      const projectInfo = getProjectDirectory(this.storagePath, project_id);
+      
+      // Check if project exists
+      if (!projectInfo) {
+        throw new MCPError(MCPErrorCode.PROJECT_NOT_FOUND, `Project ${project_id} not found`, {
+          project_id,
+          traceId: context.traceId,
+        });
+      }
+      
+      const [, projectPath] = projectInfo;
       const todoDir = join(projectPath, 'TODO', String(todo_number));
 
       // Check if TODO exists
@@ -414,7 +464,17 @@ export class TodoToolHandler extends BaseHandler {
 
     try {
       const { project_id, todo_number } = params;
-      const [, projectPath] = getProjectDirectory(this.storagePath, project_id);
+      const projectInfo = getProjectDirectory(this.storagePath, project_id);
+      
+      // Check if project exists
+      if (!projectInfo) {
+        throw new MCPError(MCPErrorCode.PROJECT_NOT_FOUND, `Project ${project_id} not found`, {
+          project_id,
+          traceId: context.traceId,
+        });
+      }
+      
+      const [, projectPath] = projectInfo;
       const todoDir = join(projectPath, 'TODO', String(todo_number));
 
       // Check if TODO exists
@@ -474,7 +534,17 @@ export class TodoToolHandler extends BaseHandler {
 
     try {
       const { project_id, todo_number } = params;
-      const [, projectPath] = getProjectDirectory(this.storagePath, project_id);
+      const projectInfo = getProjectDirectory(this.storagePath, project_id);
+      
+      // Check if project exists
+      if (!projectInfo) {
+        throw new MCPError(MCPErrorCode.PROJECT_NOT_FOUND, `Project ${project_id} not found`, {
+          project_id,
+          traceId: context.traceId,
+        });
+      }
+      
+      const [, projectPath] = projectInfo;
       const todoDir = join(projectPath, 'TODO', String(todo_number));
 
       // Check if TODO exists

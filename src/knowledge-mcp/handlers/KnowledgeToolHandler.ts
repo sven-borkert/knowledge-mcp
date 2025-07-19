@@ -13,7 +13,7 @@ import type {
   secureChapterTitleSchema,
   secureChapterContentSchema,
 } from '../schemas/validation.js';
-import { getProjectDirectory, autoCommit, validatePath, slugify } from '../utils.js';
+import { getProjectDirectory, createProjectEntry, autoCommit, validatePath, slugify } from '../utils.js';
 
 import { BaseHandler } from './BaseHandler.js';
 
@@ -36,7 +36,8 @@ export class KnowledgeToolHandler extends BaseHandler {
 
     try {
       const { project_id, filename, title, introduction, keywords, chapters } = params;
-      const [originalId, projectPath] = getProjectDirectory(this.storagePath, project_id);
+      // Use createProjectEntry for write operations that create new projects
+      const [originalId, projectPath] = createProjectEntry(this.storagePath, project_id);
       const knowledgePath = join(projectPath, 'knowledge');
 
       // Create knowledge directory if it doesn't exist
@@ -126,7 +127,18 @@ export class KnowledgeToolHandler extends BaseHandler {
 
     try {
       const { project_id, filename } = params;
-      const [originalId, projectPath] = getProjectDirectory(this.storagePath, project_id);
+      const projectInfo = getProjectDirectory(this.storagePath, project_id);
+      
+      // Project doesn't exist - return error without creating ghost entry
+      if (!projectInfo) {
+        throw new MCPError(
+          MCPErrorCode.PROJECT_NOT_FOUND,
+          `Project ${project_id} not found`,
+          { project_id, filename, traceId: context.traceId }
+        );
+      }
+      
+      const [originalId, projectPath] = projectInfo;
       const knowledgePath = join(projectPath, 'knowledge');
       const filePath = join(knowledgePath, filename);
 
@@ -205,7 +217,18 @@ export class KnowledgeToolHandler extends BaseHandler {
 
     try {
       const { project_id, filename } = params;
-      const [originalId, projectPath] = getProjectDirectory(this.storagePath, project_id);
+      const projectInfo = getProjectDirectory(this.storagePath, project_id);
+      
+      // Project doesn't exist - return error without creating ghost entry
+      if (!projectInfo) {
+        throw new MCPError(
+          MCPErrorCode.PROJECT_NOT_FOUND,
+          `Project ${project_id} not found`,
+          { project_id, filename, traceId: context.traceId }
+        );
+      }
+      
+      const [originalId, projectPath] = projectInfo;
       const knowledgePath = join(projectPath, 'knowledge');
       const filePath = join(knowledgePath, filename);
 

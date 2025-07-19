@@ -13,6 +13,8 @@ import type {
 import {
   getProjectDirectory,
   getProjectDirectoryAsync,
+  createProjectEntry,
+  createProjectEntryAsync,
   autoCommit,
   autoCommitAsync,
   validatePath,
@@ -32,7 +34,18 @@ export class ProjectToolHandler extends BaseHandler {
 
     try {
       const project_id = params;
-      const [, projectPath] = getProjectDirectory(this.storagePath, project_id);
+      const projectInfo = getProjectDirectory(this.storagePath, project_id);
+      
+      // Project doesn't exist - return exists: false
+      if (!projectInfo) {
+        this.logSuccess('get_project_main', { project_id }, context);
+        return this.formatSuccessResponse({
+          exists: false,
+          content: '',
+        });
+      }
+      
+      const [, projectPath] = projectInfo;
       const mainFile = join(projectPath, 'main.md');
 
       if (!existsSync(mainFile)) {
@@ -74,7 +87,8 @@ export class ProjectToolHandler extends BaseHandler {
 
     try {
       const { project_id, content } = params;
-      const [originalId, projectPath] = getProjectDirectory(this.storagePath, project_id);
+      // Use createProjectEntry for write operations that create new projects
+      const [originalId, projectPath] = createProjectEntry(this.storagePath, project_id);
 
       // Create project directory if it doesn't exist
       mkdirSync(projectPath, { recursive: true });
@@ -120,7 +134,18 @@ export class ProjectToolHandler extends BaseHandler {
 
     try {
       const { project_id, section_header, new_content } = params;
-      const [originalId, projectPath] = getProjectDirectory(this.storagePath, project_id);
+      const projectInfo = getProjectDirectory(this.storagePath, project_id);
+      
+      // Project doesn't exist - should not create ghost entries
+      if (!projectInfo) {
+        throw new MCPError(MCPErrorCode.PROJECT_NOT_FOUND, `Project ${project_id} does not exist`, {
+          project_id,
+          section_header,
+          traceId: context.traceId,
+        });
+      }
+      
+      const [originalId, projectPath] = projectInfo;
       const mainFile = join(projectPath, 'main.md');
 
       if (!existsSync(mainFile)) {
@@ -215,7 +240,18 @@ export class ProjectToolHandler extends BaseHandler {
 
     try {
       const { project_id, section_header } = params;
-      const [originalId, projectPath] = getProjectDirectory(this.storagePath, project_id);
+      const projectInfo = getProjectDirectory(this.storagePath, project_id);
+      
+      // Project doesn't exist - should not create ghost entries
+      if (!projectInfo) {
+        throw new MCPError(MCPErrorCode.PROJECT_NOT_FOUND, `Project ${project_id} does not exist`, {
+          project_id,
+          section_header,
+          traceId: context.traceId,
+        });
+      }
+      
+      const [originalId, projectPath] = projectInfo;
       const mainFile = join(projectPath, 'main.md');
 
       if (!existsSync(mainFile)) {
@@ -305,7 +341,18 @@ export class ProjectToolHandler extends BaseHandler {
 
     try {
       const project_id = params;
-      const [, projectPath] = await getProjectDirectoryAsync(this.storagePath, project_id);
+      const projectInfo = await getProjectDirectoryAsync(this.storagePath, project_id);
+      
+      // Project doesn't exist - return exists: false
+      if (!projectInfo) {
+        await this.logSuccessAsync('get_project_main', { project_id }, context);
+        return this.formatSuccessResponse({
+          exists: false,
+          content: '',
+        });
+      }
+      
+      const [, projectPath] = projectInfo;
       const mainFile = join(projectPath, 'main.md');
 
       try {
@@ -348,7 +395,8 @@ export class ProjectToolHandler extends BaseHandler {
 
     try {
       const { project_id, content } = params;
-      const [originalId, projectPath] = await getProjectDirectoryAsync(
+      // Use createProjectEntryAsync for write operations that create new projects
+      const [originalId, projectPath] = await createProjectEntryAsync(
         this.storagePath,
         project_id
       );
@@ -402,10 +450,20 @@ export class ProjectToolHandler extends BaseHandler {
 
     try {
       const { project_id, section_header, new_content } = params;
-      const [originalId, projectPath] = await getProjectDirectoryAsync(
+      const projectInfo = await getProjectDirectoryAsync(
         this.storagePath,
         project_id
       );
+      
+      // Check if project exists
+      if (!projectInfo) {
+        throw new MCPError(MCPErrorCode.PROJECT_NOT_FOUND, `Project ${project_id} not found`, {
+          project_id,
+          traceId: context.traceId,
+        });
+      }
+      
+      const [originalId, projectPath] = projectInfo;
       const mainFile = join(projectPath, 'main.md');
 
       try {
@@ -505,10 +563,20 @@ export class ProjectToolHandler extends BaseHandler {
 
     try {
       const { project_id, section_header } = params;
-      const [originalId, projectPath] = await getProjectDirectoryAsync(
+      const projectInfo = await getProjectDirectoryAsync(
         this.storagePath,
         project_id
       );
+      
+      // Check if project exists
+      if (!projectInfo) {
+        throw new MCPError(MCPErrorCode.PROJECT_NOT_FOUND, `Project ${project_id} not found`, {
+          project_id,
+          traceId: context.traceId,
+        });
+      }
+      
+      const [originalId, projectPath] = projectInfo;
       const mainFile = join(projectPath, 'main.md');
 
       try {

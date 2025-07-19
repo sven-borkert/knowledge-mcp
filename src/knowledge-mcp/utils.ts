@@ -529,8 +529,27 @@ export function writeProjectIndex(storagePath: string, index: Record<string, str
 /**
  * Get the directory path for a project, handling the index mapping.
  * Returns tuple of [original_project_id, project_directory_path]
+ * This version does NOT create entries for non-existent projects.
  */
-export function getProjectDirectory(storagePath: string, projectId: string): [string, string] {
+export function getProjectDirectory(storagePath: string, projectId: string): [string, string] | null {
+  const index = readProjectIndex(storagePath);
+
+  // Check if project_id is already in index
+  if (projectId in index) {
+    const dirName = index[projectId];
+    return [projectId, join(storagePath, 'projects', dirName)];
+  }
+
+  // Project doesn't exist - return null instead of creating entry
+  return null;
+}
+
+/**
+ * Create a new project entry in the index and return its directory path.
+ * This is the only function that should create new index entries.
+ * Returns tuple of [original_project_id, project_directory_path]
+ */
+export function createProjectEntry(storagePath: string, projectId: string): [string, string] {
   const index = readProjectIndex(storagePath);
 
   // Check if project_id is already in index
@@ -1044,9 +1063,30 @@ export async function writeProjectIndexAsync(
 
 /**
  * Async version of getProjectDirectory.
- * Get or create the directory path for a project.
+ * Get the directory path for a project without creating new entries.
  */
 export async function getProjectDirectoryAsync(
+  storagePath: string,
+  projectId: string
+): Promise<[string, string] | null> {
+  // Read current index
+  const index = await readProjectIndexAsync(storagePath);
+
+  // Check if we already have a directory for this project
+  if (index[projectId]) {
+    const projectPath = join(storagePath, 'projects', index[projectId]);
+    return [projectId, projectPath];
+  }
+
+  // Project doesn't exist - return null instead of creating entry
+  return null;
+}
+
+/**
+ * Async version of createProjectEntry.
+ * Create a new project entry in the index and return its directory path.
+ */
+export async function createProjectEntryAsync(
   storagePath: string,
   projectId: string
 ): Promise<[string, string]> {
@@ -1056,8 +1096,6 @@ export async function getProjectDirectoryAsync(
   // Check if we already have a directory for this project
   if (index[projectId]) {
     const projectPath = join(storagePath, 'projects', index[projectId]);
-    // Ensure the directory exists
-    await mkdir(projectPath, { recursive: true });
     return [projectId, projectPath];
   }
 
@@ -1076,9 +1114,8 @@ export async function getProjectDirectoryAsync(
   index[projectId] = dirName;
   await writeProjectIndexAsync(storagePath, index);
 
-  // Create the directory
+  // Note: We don't create the directory here - let the caller do that
   const projectPath = join(storagePath, 'projects', dirName);
-  await mkdir(projectPath, { recursive: true });
 
   return [projectId, projectPath];
 }

@@ -31,7 +31,18 @@ export class ChapterToolHandler extends BaseHandler {
 
     try {
       const { project_id, filename, chapter_title, new_content, new_summary } = params;
-      const [originalId, projectPath] = getProjectDirectory(this.storagePath, project_id);
+      const projectInfo = getProjectDirectory(this.storagePath, project_id);
+      
+      // Project doesn't exist - should not create ghost entries
+      if (!projectInfo) {
+        throw new MCPError(
+          MCPErrorCode.PROJECT_NOT_FOUND,
+          `Project ${project_id} not found`,
+          { project_id, filename, chapter_title, traceId: context.traceId }
+        );
+      }
+      
+      const [originalId, projectPath] = projectInfo;
       const knowledgePath = join(projectPath, 'knowledge');
       const filePath = join(knowledgePath, filename);
 
@@ -138,7 +149,18 @@ export class ChapterToolHandler extends BaseHandler {
 
     try {
       const { project_id, filename, chapter_title } = params;
-      const [originalId, projectPath] = getProjectDirectory(this.storagePath, project_id);
+      const projectInfo = getProjectDirectory(this.storagePath, project_id);
+      
+      // Project doesn't exist - should not create ghost entries
+      if (!projectInfo) {
+        throw new MCPError(
+          MCPErrorCode.PROJECT_NOT_FOUND,
+          `Project ${project_id} not found`,
+          { project_id, filename, chapter_title, traceId: context.traceId }
+        );
+      }
+      
+      const [originalId, projectPath] = projectInfo;
       const knowledgePath = join(projectPath, 'knowledge');
       const filePath = join(knowledgePath, filename);
 

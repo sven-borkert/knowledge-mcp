@@ -20,7 +20,21 @@ export class ResourceHandler extends BaseHandler {
       const project_id = Array.isArray(params.project_id)
         ? String(params.project_id[0])
         : String(params.project_id);
-      const [originalId, projectPath] = getProjectDirectory(this.storagePath, String(project_id));
+      const projectInfo = getProjectDirectory(this.storagePath, String(project_id));
+      
+      // Project doesn't exist - return not found without creating ghost entry
+      if (!projectInfo) {
+        return {
+          contents: [
+            {
+              uri: uri.href,
+              text: `Project ${project_id} not found`,
+            },
+          ],
+        };
+      }
+      
+      const [originalId, projectPath] = projectInfo;
       const mainFile = join(projectPath, 'main.md');
 
       if (!existsSync(mainFile)) {
@@ -83,7 +97,21 @@ export class ResourceHandler extends BaseHandler {
       const project_id = Array.isArray(params.project_id)
         ? String(params.project_id[0])
         : String(params.project_id);
-      const [, projectPath] = getProjectDirectory(this.storagePath, String(project_id));
+      const projectInfo = getProjectDirectory(this.storagePath, String(project_id));
+      
+      // Project doesn't exist - return empty list without creating ghost entry
+      if (!projectInfo) {
+        return {
+          contents: [
+            {
+              uri: uri.href,
+              text: JSON.stringify({ files: [] }, null, 2),
+            },
+          ],
+        };
+      }
+      
+      const [, projectPath] = projectInfo;
       const knowledgePath = join(projectPath, 'knowledge');
 
       if (!existsSync(knowledgePath)) {
@@ -166,7 +194,21 @@ export class ResourceHandler extends BaseHandler {
       const filename = Array.isArray(params.filename)
         ? String(params.filename[0])
         : String(params.filename);
-      const [, projectPath] = getProjectDirectory(this.storagePath, String(project_id));
+      const projectInfo = getProjectDirectory(this.storagePath, String(project_id));
+      
+      // Project doesn't exist - return not found without creating ghost entry
+      if (!projectInfo) {
+        return {
+          contents: [
+            {
+              uri: uri.href,
+              text: `Project ${project_id} not found`,
+            },
+          ],
+        };
+      }
+      
+      const [, projectPath] = projectInfo;
       const knowledgePath = join(projectPath, 'knowledge');
       const filePath = join(knowledgePath, String(filename));
 

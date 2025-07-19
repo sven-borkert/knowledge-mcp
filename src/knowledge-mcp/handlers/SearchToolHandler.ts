@@ -20,7 +20,19 @@ export class SearchToolHandler extends BaseHandler {
 
     try {
       const { project_id, query } = params;
-      const [, projectPath] = getProjectDirectory(this.storagePath, project_id);
+      const projectInfo = getProjectDirectory(this.storagePath, project_id);
+      
+      // Project doesn't exist - return empty results without creating ghost entry
+      if (!projectInfo) {
+        this.logSuccess('search_knowledge', { project_id }, context);
+        return this.formatSuccessResponse({
+          total_documents: 0,
+          total_matches: 0,
+          results: [],
+        });
+      }
+      
+      const [, projectPath] = projectInfo;
 
       // Parse search keywords
       const keywords = query
