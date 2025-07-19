@@ -102,9 +102,36 @@ export const secureTodoDescriptionSchema = z
   .refine((val) => !val.includes('\0'), 'TODO description cannot contain null bytes')
   .refine((val) => val.trim() === val, 'TODO description cannot have leading/trailing spaces');
 
-export const secureTaskDescriptionSchema = z
+// Task title for brief identification (used in filenames)
+export const secureTaskTitleSchema = z
   .string()
-  .min(1, 'Task description cannot be empty')
-  .max(500, 'Task description too long (max 500 characters)')
-  .refine((val) => !val.includes('\0'), 'Task description cannot contain null bytes')
-  .refine((val) => val.trim() === val, 'Task description cannot have leading/trailing spaces');
+  .min(1, 'Task title cannot be empty')
+  .max(200, 'Task title too long (max 200 characters)')
+  .refine((val) => !val.includes('\0'), 'Task title cannot contain null bytes')
+  .refine((val) => val.trim() === val, 'Task title cannot have leading/trailing spaces');
+
+// Full markdown content for task details
+export const secureTaskContentSchema = z
+  .string()
+  .max(100 * 1024, 'Task content too large (max 100KB)')
+  .refine((val) => !val.includes('\0'), 'Task content cannot contain null bytes')
+  .optional();
+
+// Task input schema for new markdown-based tasks
+export const taskInputSchema = z.object({
+  title: secureTaskTitleSchema,
+  content: secureTaskContentSchema,
+});
+
+// Position schemas for add operations
+export const sectionPositionSchema = z
+  .enum(['before', 'after', 'end'])
+  .describe('Where to insert the new section: before/after a reference section, or at end');
+
+export const referenceHeaderSchema = z
+  .string()
+  .min(1, 'Reference header cannot be empty')
+  .max(200, 'Reference header too long')
+  .regex(/^##\s+/, 'Reference header must start with "## "')
+  .optional()
+  .describe('The section header to use as reference point for before/after positioning');

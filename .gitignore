@@ -21,12 +21,14 @@ dist/
 # Testing
 coverage/
 .nyc_output/
+test-results/
 
 # Cache
 .npm
 .pnpm-store/
 .eslintcache
 .cache/
+.mypy_cache/
 
 # IDE
 .vscode/

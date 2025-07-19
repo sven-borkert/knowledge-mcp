@@ -9,6 +9,8 @@ import type {
   secureProjectIdSchema,
   secureContentSchema,
   secureSectionHeaderSchema,
+  sectionPositionSchema,
+  referenceHeaderSchema,
 } from '../schemas/validation.js';
 import {
   getProjectDirectory,
@@ -21,6 +23,7 @@ import {
   validatePathAsync,
   deleteProjectDirectory,
   deleteProjectDirectoryAsync,
+  acquireFileLock,
 } from '../utils.js';
 
 import { BaseHandler } from './BaseHandler.js';
@@ -35,7 +38,7 @@ export class ProjectToolHandler extends BaseHandler {
     try {
       const project_id = params;
       const projectInfo = getProjectDirectory(this.storagePath, project_id);
-      
+
       // Project doesn't exist - return exists: false
       if (!projectInfo) {
         this.logSuccess('get_project_main', { project_id }, context);
@@ -44,7 +47,7 @@ export class ProjectToolHandler extends BaseHandler {
           content: '',
         });
       }
-      
+
       const [, projectPath] = projectInfo;
       const mainFile = join(projectPath, 'main.md');
 
@@ -135,7 +138,7 @@ export class ProjectToolHandler extends BaseHandler {
     try {
       const { project_id, section_header, new_content } = params;
       const projectInfo = getProjectDirectory(this.storagePath, project_id);
-      
+
       // Project doesn't exist - should not create ghost entries
       if (!projectInfo) {
         throw new MCPError(MCPErrorCode.PROJECT_NOT_FOUND, `Project ${project_id} does not exist`, {
@@ -144,7 +147,7 @@ export class ProjectToolHandler extends BaseHandler {
           traceId: context.traceId,
         });
       }
-      
+
       const [originalId, projectPath] = projectInfo;
       const mainFile = join(projectPath, 'main.md');
 
@@ -241,7 +244,7 @@ export class ProjectToolHandler extends BaseHandler {
     try {
       const { project_id, section_header } = params;
       const projectInfo = getProjectDirectory(this.storagePath, project_id);
-      
+
       // Project doesn't exist - should not create ghost entries
       if (!projectInfo) {
         throw new MCPError(MCPErrorCode.PROJECT_NOT_FOUND, `Project ${project_id} does not exist`, {
@@ -250,7 +253,7 @@ export class ProjectToolHandler extends BaseHandler {
           traceId: context.traceId,
         });
       }
-      
+
       const [originalId, projectPath] = projectInfo;
       const mainFile = join(projectPath, 'main.md');
 
@@ -329,6 +332,153 @@ export class ProjectToolHandler extends BaseHandler {
     }
   }
 
+  /**
+   * Add a new section to project main
+   */
+  addProjectSection(params: {
+    project_id: z.infer<typeof secureProjectIdSchema>;
+    section_header: z.infer<typeof secureSectionHeaderSchema>;
+    content: z.infer<typeof secureContentSchema>;
+    position?: z.infer<typeof sectionPositionSchema>;
+    reference_header?: z.infer<typeof referenceHeaderSchema>;
+  }): string {
+    const context = this.createContext('add_project_section', params);
+
+    try {
+      const { project_id, section_header, content, position = 'end', reference_header } = params;
+      const projectInfo = getProjectDirectory(this.storagePath, project_id);
+
+      // Project doesn't exist - should not create ghost entries
+      if (!projectInfo) {
+        throw new MCPError(MCPErrorCode.PROJECT_NOT_FOUND, `Project ${project_id} does not exist`, {
+          project_id,
+          section_header,
+          traceId: context.traceId,
+        });
+      }
+
+      const [originalId, projectPath] = projectInfo;
+      const mainFile = join(projectPath, 'main.md');
+
+      if (!existsSync(mainFile)) {
+        throw new MCPError(MCPErrorCode.PROJECT_NOT_FOUND, `Project ${originalId} does not exist`, {
+          project_id,
+          section_header,
+          traceId: context.traceId,
+        });
+      }
+
+      const fileContent = readFileSync(mainFile, 'utf8');
+      const lines = fileContent.split('\n');
+
+      // Check if section already exists
+      for (const line of lines) {
+        if (line.trim() === section_header.trim()) {
+          throw new MCPError(
+            MCPErrorCode.FILE_ALREADY_EXISTS,
+            `Section "${section_header}" already exists in project main`,
+            { project_id, section_header, traceId: context.traceId }
+          );
+        }
+      }
+
+      let newLines: string[];
+
+      if (position === 'end') {
+        // Add at the end
+        newLines = [...lines, '', section_header, '', content];
+      } else if ((position === 'before' || position === 'after') && reference_header) {
+        // Find reference section
+        let refIndex = -1;
+        for (let i = 0; i < lines.length; i++) {
+          if (lines[i].trim() === reference_header.trim()) {
+            refIndex = i;
+            break;
+          }
+        }
+
+        if (refIndex === -1) {
+          throw new MCPError(
+            MCPErrorCode.SECTION_NOT_FOUND,
+            `Reference section "${reference_header}" not found in project main`,
+            { project_id, reference_header, traceId: context.traceId }
+          );
+        }
+
+        if (position === 'before') {
+          // Insert before reference section
+          newLines = [
+            ...lines.slice(0, refIndex),
+            section_header,
+            '',
+            content,
+            '',
+            ...lines.slice(refIndex),
+          ];
+        } else {
+          // Insert after reference section
+          // Find the end of the reference section
+          let sectionEnd = lines.length;
+          for (let j = refIndex + 1; j < lines.length; j++) {
+            if (lines[j].startsWith('## ')) {
+              sectionEnd = j;
+              break;
+            }
+          }
+
+          newLines = [
+            ...lines.slice(0, sectionEnd),
+            '',
+            section_header,
+            '',
+            content,
+            ...lines.slice(sectionEnd),
+          ];
+        }
+      } else {
+        throw new MCPError(
+          MCPErrorCode.INVALID_INPUT,
+          'Position "before" or "after" requires reference_header',
+          { project_id, position, traceId: context.traceId }
+        );
+      }
+
+      // Clean up extra blank lines
+      const cleanedContent = newLines.join('\n').replace(/\n{3,}/g, '\n\n');
+      writeFileSync(mainFile, cleanedContent);
+
+      autoCommit(this.storagePath, `Add section "${section_header}" to ${originalId}`);
+
+      this.logSuccess('add_project_section', { project_id, section_header }, context);
+      return this.formatSuccessResponse({
+        message: `Section "${section_header}" added to project ${originalId}`,
+      });
+    } catch (error) {
+      const mcpError =
+        error instanceof MCPError
+          ? error
+          : new MCPError(
+              MCPErrorCode.INTERNAL_ERROR,
+              `Failed to add project section: ${error instanceof Error ? error.message : String(error)}`,
+              {
+                project_id: params.project_id,
+                section_header: params.section_header,
+                traceId: context.traceId,
+              }
+            );
+      this.logError(
+        'add_project_section',
+        {
+          project_id: params.project_id,
+          section_header: params.section_header,
+        },
+        mcpError,
+        context
+      );
+      return this.formatErrorResponse(mcpError, context);
+    }
+  }
+
   // ============================================
   // ASYNC VERSIONS OF METHODS
   // ============================================
@@ -342,7 +492,7 @@ export class ProjectToolHandler extends BaseHandler {
     try {
       const project_id = params;
       const projectInfo = await getProjectDirectoryAsync(this.storagePath, project_id);
-      
+
       // Project doesn't exist - return exists: false
       if (!projectInfo) {
         await this.logSuccessAsync('get_project_main', { project_id }, context);
@@ -351,7 +501,7 @@ export class ProjectToolHandler extends BaseHandler {
           content: '',
         });
       }
-      
+
       const [, projectPath] = projectInfo;
       const mainFile = join(projectPath, 'main.md');
 
@@ -396,10 +546,7 @@ export class ProjectToolHandler extends BaseHandler {
     try {
       const { project_id, content } = params;
       // Use createProjectEntryAsync for write operations that create new projects
-      const [originalId, projectPath] = await createProjectEntryAsync(
-        this.storagePath,
-        project_id
-      );
+      const [originalId, projectPath] = await createProjectEntryAsync(this.storagePath, project_id);
 
       // Create project directory if it doesn't exist
       await mkdir(projectPath, { recursive: true });
@@ -450,11 +597,8 @@ export class ProjectToolHandler extends BaseHandler {
 
     try {
       const { project_id, section_header, new_content } = params;
-      const projectInfo = await getProjectDirectoryAsync(
-        this.storagePath,
-        project_id
-      );
-      
+      const projectInfo = await getProjectDirectoryAsync(this.storagePath, project_id);
+
       // Check if project exists
       if (!projectInfo) {
         throw new MCPError(MCPErrorCode.PROJECT_NOT_FOUND, `Project ${project_id} not found`, {
@@ -462,7 +606,7 @@ export class ProjectToolHandler extends BaseHandler {
           traceId: context.traceId,
         });
       }
-      
+
       const [originalId, projectPath] = projectInfo;
       const mainFile = join(projectPath, 'main.md');
 
@@ -563,11 +707,8 @@ export class ProjectToolHandler extends BaseHandler {
 
     try {
       const { project_id, section_header } = params;
-      const projectInfo = await getProjectDirectoryAsync(
-        this.storagePath,
-        project_id
-      );
-      
+      const projectInfo = await getProjectDirectoryAsync(this.storagePath, project_id);
+
       // Check if project exists
       if (!projectInfo) {
         throw new MCPError(MCPErrorCode.PROJECT_NOT_FOUND, `Project ${project_id} not found`, {
@@ -575,7 +716,7 @@ export class ProjectToolHandler extends BaseHandler {
           traceId: context.traceId,
         });
       }
-      
+
       const [originalId, projectPath] = projectInfo;
       const mainFile = join(projectPath, 'main.md');
 
@@ -651,6 +792,160 @@ export class ProjectToolHandler extends BaseHandler {
         {
           project_id: params.project_id,
           section_header: params.section_header,
+        },
+        mcpError,
+        context
+      );
+      return this.formatErrorResponse(mcpError, context);
+    }
+  }
+
+  /**
+   * Async version of addProjectSection
+   */
+  async addProjectSectionAsync(params: {
+    project_id: z.infer<typeof secureProjectIdSchema>;
+    section_header: z.infer<typeof secureSectionHeaderSchema>;
+    content: z.infer<typeof secureContentSchema>;
+    position?: z.infer<typeof sectionPositionSchema>;
+    reference_header?: z.infer<typeof referenceHeaderSchema>;
+  }): Promise<string> {
+    const context = this.createContext('add_project_section', params);
+
+    try {
+      const { project_id, section_header, content, position = 'end', reference_header } = params;
+
+      // Validate parameters
+      if ((position === 'before' || position === 'after') && !reference_header) {
+        throw new MCPError(
+          MCPErrorCode.INVALID_INPUT,
+          'reference_header is required when position is "before" or "after"',
+          { project_id, section_header, position, traceId: context.traceId }
+        );
+      }
+
+      const projectInfo = await getProjectDirectoryAsync(this.storagePath, project_id);
+
+      // Check if project exists
+      if (!projectInfo) {
+        throw new MCPError(MCPErrorCode.PROJECT_NOT_FOUND, `Project ${project_id} not found`, {
+          project_id,
+          traceId: context.traceId,
+        });
+      }
+
+      const [originalId, projectPath] = projectInfo;
+      const mainFile = join(projectPath, 'main.md');
+
+      try {
+        await access(mainFile);
+      } catch {
+        throw new MCPError(MCPErrorCode.PROJECT_NOT_FOUND, `Project ${originalId} does not exist`, {
+          project_id,
+          section_header,
+          traceId: context.traceId,
+        });
+      }
+
+      // Use file locking to prevent race conditions in concurrent section additions
+      await acquireFileLock(mainFile, async () => {
+        const currentContent = await readFile(mainFile, 'utf8');
+        const lines = currentContent.split('\n');
+
+        // Check if section already exists
+        const existingSection = lines.find((line) => line.trim() === section_header.trim());
+        if (existingSection) {
+          throw new MCPError(
+            MCPErrorCode.SECTION_ALREADY_EXISTS,
+            `Section "${section_header}" already exists in project main`,
+            { project_id, section_header, traceId: context.traceId }
+          );
+        }
+
+        // Find insertion point
+        let insertIndex = lines.length;
+
+        if (position === 'before' || position === 'after') {
+          const referenceIndex = lines.findIndex(
+            (line) => line.trim() === reference_header?.trim()
+          );
+          if (referenceIndex === -1) {
+            throw new MCPError(
+              MCPErrorCode.SECTION_NOT_FOUND,
+              `Reference section "${reference_header}" not found in project main`,
+              { project_id, reference_header, traceId: context.traceId }
+            );
+          }
+
+          if (position === 'before') {
+            insertIndex = referenceIndex;
+          } else {
+            // position === 'after'
+            // Find the end of the reference section
+            insertIndex = referenceIndex + 1;
+            while (insertIndex < lines.length && !lines[insertIndex].startsWith('## ')) {
+              insertIndex++;
+            }
+          }
+        }
+
+        // Prepare new section content based on position and content
+        let newLines: string[];
+
+        if (position === 'end' && ((lines.length === 1 && lines[0] === '') || lines.length === 0)) {
+          // Special case for empty project
+          newLines = ['', '', section_header, '', content];
+        } else if (position === 'end') {
+          // Add at the end with proper spacing
+          newLines = [...lines, '', section_header, '', content];
+        } else {
+          // Insert at specific position
+          const newSection = [section_header, '', content, ''];
+          newLines = [...lines.slice(0, insertIndex), ...newSection, ...lines.slice(insertIndex)];
+        }
+
+        const updatedContent = newLines.join('\n').replace(/\n\n\n+/g, '\n\n');
+        await writeFile(mainFile, updatedContent);
+
+        // Also commit inside the lock to ensure atomicity
+        await autoCommitAsync(this.storagePath, `Add section "${section_header}" to ${originalId}`);
+      });
+
+      await this.logSuccessAsync(
+        'add_project_section',
+        {
+          project_id,
+          section_header,
+          position,
+          reference_header,
+        },
+        context
+      );
+      return this.formatSuccessResponse({
+        message: `Section "${section_header}" added to project ${originalId}`,
+      });
+    } catch (error) {
+      const mcpError =
+        error instanceof MCPError
+          ? error
+          : new MCPError(
+              MCPErrorCode.INTERNAL_ERROR,
+              `Failed to add project section: ${error instanceof Error ? error.message : String(error)}`,
+              {
+                project_id: params.project_id,
+                section_header: params.section_header,
+                position: params.position,
+                reference_header: params.reference_header,
+                traceId: context.traceId,
+              }
+            );
+      await this.logErrorAsync(
+        'add_project_section',
+        {
+          project_id: params.project_id,
+          section_header: params.section_header,
+          position: params.position,
+          reference_header: params.reference_header,
         },
         mcpError,
         context

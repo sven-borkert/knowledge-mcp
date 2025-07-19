@@ -24,7 +24,10 @@ import {
   secureChapterSummarySchema,
   secureTodoNumberSchema,
   secureTodoDescriptionSchema,
-  secureTaskDescriptionSchema,
+  secureTaskTitleSchema,
+  secureTaskContentSchema,
+  sectionPositionSchema,
+  referenceHeaderSchema,
 } from './schemas/validation.js';
 import { initializeStorageAsync } from './utils.js';
 
@@ -78,14 +81,17 @@ Returns: {success: bool, message?: str, error?: str}`,
       content: secureContentSchema.describe('The new markdown content for main.md'),
     },
   },
-  ({ project_id, content }) => ({
-    content: [
-      {
-        type: 'text',
-        text: projectHandler.updateProjectMain({ project_id, content }),
-      },
-    ],
-  })
+  async ({ project_id, content }) => {
+    const result = await projectHandler.updateProjectMainAsync({ project_id, content });
+    return {
+      content: [
+        {
+          type: 'text',
+          text: result,
+        },
+      ],
+    };
+  }
 );
 
 server.registerTool(
@@ -106,14 +112,21 @@ Returns: {success: bool, message?: str, error?: str}`,
       ),
     },
   },
-  ({ project_id, section_header, new_content }) => ({
-    content: [
-      {
-        type: 'text',
-        text: projectHandler.updateProjectSection({ project_id, section_header, new_content }),
-      },
-    ],
-  })
+  async ({ project_id, section_header, new_content }) => {
+    const result = await projectHandler.updateProjectSectionAsync({
+      project_id,
+      section_header,
+      new_content,
+    });
+    return {
+      content: [
+        {
+          type: 'text',
+          text: result,
+        },
+      ],
+    };
+  }
 );
 
 server.registerTool(
@@ -130,14 +143,56 @@ Returns: {success: bool, message?: str, error?: str}`,
       ),
     },
   },
-  ({ project_id, section_header }) => ({
-    content: [
-      {
-        type: 'text',
-        text: projectHandler.removeProjectSection({ project_id, section_header }),
-      },
-    ],
-  })
+  async ({ project_id, section_header }) => {
+    const result = await projectHandler.removeProjectSectionAsync({ project_id, section_header });
+    return {
+      content: [
+        {
+          type: 'text',
+          text: result,
+        },
+      ],
+    };
+  }
+);
+
+server.registerTool(
+  'add_project_section',
+  {
+    title: 'Add Project Section',
+    description: `Add a new section to the project main.md file.
+The section can be positioned at the end, or before/after a reference section.
+The section_header must include the "## " prefix.
+Returns: {success: bool, message?: str, error?: str}`,
+    inputSchema: {
+      project_id: secureProjectIdSchema.describe('The project identifier'),
+      section_header: secureSectionHeaderSchema.describe(
+        'The new section header (e.g., "## Configuration")'
+      ),
+      content: secureContentSchema.describe('The content for the new section'),
+      position: sectionPositionSchema
+        .optional()
+        .describe('Where to insert the section (default: "end")'),
+      reference_header: referenceHeaderSchema,
+    },
+  },
+  async ({ project_id, section_header, content, position, reference_header }) => {
+    const result = await projectHandler.addProjectSectionAsync({
+      project_id,
+      section_header,
+      content,
+      position,
+      reference_header,
+    });
+    return {
+      content: [
+        {
+          type: 'text',
+          text: result,
+        },
+      ],
+    };
+  }
 );
 
 server.registerTool(
@@ -152,14 +207,17 @@ Returns: {success: bool, project_id: str, message: str, error?: str}`,
       project_id: secureProjectIdSchema.describe('The project identifier to delete'),
     },
   },
-  ({ project_id }) => ({
-    content: [
-      {
-        type: 'text',
-        text: projectHandler.deleteProject(project_id),
-      },
-    ],
-  })
+  async ({ project_id }) => {
+    const result = await projectHandler.deleteProjectAsync(project_id);
+    return {
+      content: [
+        {
+          type: 'text',
+          text: result,
+        },
+      ],
+    };
+  }
 );
 
 // Knowledge file tools
@@ -192,21 +250,24 @@ Returns: {success: bool, document_id?: str, message?: str, error?: str}`,
         .describe('List of chapter objects with title and content'),
     },
   },
-  ({ project_id, filename, title, introduction, keywords, chapters }) => ({
-    content: [
-      {
-        type: 'text',
-        text: knowledgeHandler.createKnowledgeFile({
-          project_id,
-          filename,
-          title,
-          introduction,
-          keywords,
-          chapters,
-        }),
-      },
-    ],
-  })
+  async ({ project_id, filename, title, introduction, keywords, chapters }) => {
+    const result = await knowledgeHandler.createKnowledgeFileAsync({
+      project_id,
+      filename,
+      title,
+      introduction,
+      keywords,
+      chapters,
+    });
+    return {
+      content: [
+        {
+          type: 'text',
+          text: result,
+        },
+      ],
+    };
+  }
 );
 
 server.registerTool(
@@ -221,14 +282,17 @@ Returns: {success: bool, document?: object, error?: str}`,
       filename: secureFilenameSchema.describe('Knowledge file name (must include .md extension)'),
     },
   },
-  ({ project_id, filename }) => ({
-    content: [
-      {
-        type: 'text',
-        text: knowledgeHandler.getKnowledgeFile({ project_id, filename }),
-      },
-    ],
-  })
+  async ({ project_id, filename }) => {
+    const result = await knowledgeHandler.getKnowledgeFileAsync({ project_id, filename });
+    return {
+      content: [
+        {
+          type: 'text',
+          text: result,
+        },
+      ],
+    };
+  }
 );
 
 server.registerTool(
@@ -242,14 +306,17 @@ Returns: {success: bool, message?: str, error?: str}`,
       filename: secureFilenameSchema.describe('Full filename including .md extension'),
     },
   },
-  ({ project_id, filename }) => ({
-    content: [
-      {
-        type: 'text',
-        text: knowledgeHandler.deleteKnowledgeFile({ project_id, filename }),
-      },
-    ],
-  })
+  async ({ project_id, filename }) => {
+    const result = await knowledgeHandler.deleteKnowledgeFileAsync({ project_id, filename });
+    return {
+      content: [
+        {
+          type: 'text',
+          text: result,
+        },
+      ],
+    };
+  }
 );
 
 // Search tool
@@ -266,14 +333,17 @@ Returns: {success: bool, total_documents: int, total_matches: int, results: [...
       query: secureSearchQuerySchema.describe('Space-separated keywords to search for'),
     },
   },
-  ({ project_id, query }) => ({
-    content: [
-      {
-        type: 'text',
-        text: searchHandler.searchKnowledge({ project_id, query }),
-      },
-    ],
-  })
+  async ({ project_id, query }) => {
+    const result = await searchHandler.searchKnowledgeAsync({ project_id, query });
+    return {
+      content: [
+        {
+          type: 'text',
+          text: result,
+        },
+      ],
+    };
+  }
 );
 
 // Chapter tools
@@ -299,20 +369,23 @@ Returns: {success: bool, message?: str, error?: str}`,
         .describe('Optional chapter summary for search results'),
     },
   },
-  ({ project_id, filename, chapter_title, new_content, new_summary }) => ({
-    content: [
-      {
-        type: 'text',
-        text: chapterHandler.updateChapter({
-          project_id,
-          filename,
-          chapter_title,
-          new_content,
-          new_summary,
-        }),
-      },
-    ],
-  })
+  async ({ project_id, filename, chapter_title, new_content, new_summary }) => {
+    const result = await chapterHandler.updateChapterAsync({
+      project_id,
+      filename,
+      chapter_title,
+      new_content,
+      new_summary,
+    });
+    return {
+      content: [
+        {
+          type: 'text',
+          text: result,
+        },
+      ],
+    };
+  }
 );
 
 server.registerTool(
@@ -328,14 +401,58 @@ Returns: {success: bool, message?: str, error?: str}`,
       chapter_title: secureChapterTitleSchema.describe('Exact title of the chapter to remove'),
     },
   },
-  ({ project_id, filename, chapter_title }) => ({
-    content: [
-      {
-        type: 'text',
-        text: chapterHandler.removeChapter({ project_id, filename, chapter_title }),
-      },
-    ],
-  })
+  async ({ project_id, filename, chapter_title }) => {
+    const result = await chapterHandler.removeChapterAsync({ project_id, filename, chapter_title });
+    return {
+      content: [
+        {
+          type: 'text',
+          text: result,
+        },
+      ],
+    };
+  }
+);
+
+server.registerTool(
+  'add_chapter',
+  {
+    title: 'Add Chapter',
+    description: `Add a new chapter to a knowledge document.
+The chapter can be positioned at the end, or before/after a reference chapter.
+Chapter title must not already exist in the document.
+Returns: {success: bool, message?: str, error?: str}`,
+    inputSchema: {
+      project_id: secureProjectIdSchema.describe('The project identifier'),
+      filename: secureFilenameSchema.describe('Knowledge file name (must include .md extension)'),
+      chapter_title: secureChapterTitleSchema.describe('Title for the new chapter'),
+      content: secureChapterContentSchema.describe('Content for the new chapter'),
+      position: sectionPositionSchema
+        .optional()
+        .describe('Where to insert the chapter (default: "end")'),
+      reference_chapter: secureChapterTitleSchema
+        .optional()
+        .describe('The chapter title to use as reference point for before/after positioning'),
+    },
+  },
+  async ({ project_id, filename, chapter_title, content, position, reference_chapter }) => {
+    const result = await chapterHandler.addChapterAsync({
+      project_id,
+      filename,
+      chapter_title,
+      content,
+      position,
+      reference_chapter,
+    });
+    return {
+      content: [
+        {
+          type: 'text',
+          text: result,
+        },
+      ],
+    };
+  }
 );
 
 // Server tools
@@ -347,14 +464,17 @@ server.registerTool(
 Returns: {success: bool, name: str, version: str, storage_path: str, description: str}`,
     inputSchema: {},
   },
-  () => ({
-    content: [
-      {
-        type: 'text',
-        text: serverHandler.getServerInfo(),
-      },
-    ],
-  })
+  async () => {
+    const result = await serverHandler.getServerInfoAsync();
+    return {
+      content: [
+        {
+          type: 'text',
+          text: result,
+        },
+      ],
+    };
+  }
 );
 
 server.registerTool(
@@ -365,14 +485,17 @@ server.registerTool(
 Returns: {success: bool, storage_path: str, has_changes: bool, current_branch: str, last_commit: str, remote_status: str, uncommitted_files: int, status_details: str}`,
     inputSchema: {},
   },
-  () => ({
-    content: [
-      {
-        type: 'text',
-        text: serverHandler.getStorageStatus(),
-      },
-    ],
-  })
+  async () => {
+    const result = await serverHandler.getStorageStatusAsync();
+    return {
+      content: [
+        {
+          type: 'text',
+          text: result,
+        },
+      ],
+    };
+  }
 );
 
 server.registerTool(
@@ -383,14 +506,17 @@ server.registerTool(
 Returns: {success: bool, message: str, files_committed: int, pushed: bool, push_error?: str, commit_message: str}`,
     inputSchema: {},
   },
-  () => ({
-    content: [
-      {
-        type: 'text',
-        text: serverHandler.syncStorage(),
-      },
-    ],
-  })
+  async () => {
+    const result = await serverHandler.syncStorageAsync();
+    return {
+      content: [
+        {
+          type: 'text',
+          text: result,
+        },
+      ],
+    };
+  }
 );
 
 // TODO Management tools
@@ -404,14 +530,17 @@ Returns: {success: bool, todos: [...], error?: str}`,
       project_id: secureProjectIdSchema.describe('The project identifier'),
     },
   },
-  ({ project_id }) => ({
-    content: [
-      {
-        type: 'text',
-        text: todoHandler.listTodos({ project_id }),
-      },
-    ],
-  })
+  async ({ project_id }) => {
+    const result = await todoHandler.listTodosAsync({ project_id });
+    return {
+      content: [
+        {
+          type: 'text',
+          text: result,
+        },
+      ],
+    };
+  }
 );
 
 server.registerTool(
@@ -419,46 +548,62 @@ server.registerTool(
   {
     title: 'Create TODO',
     description: `Create a new TODO list with optional initial tasks.
+Tasks must be objects with title and content properties for full markdown support.
 Returns: {success: bool, todo_number: int, message: str, error?: str}`,
     inputSchema: {
       project_id: secureProjectIdSchema.describe('The project identifier'),
       description: secureTodoDescriptionSchema.describe('Description of the TODO list'),
       tasks: z
-        .array(secureTaskDescriptionSchema)
+        .array(
+          z.object({
+            title: secureTaskTitleSchema.describe('Brief task title (max 200 chars)'),
+            content: secureTaskContentSchema.describe('Full markdown content with details'),
+          })
+        )
         .optional()
-        .describe('Optional initial task descriptions'),
+        .describe('Optional initial tasks as {title, content} objects'),
     },
   },
-  ({ project_id, description, tasks }) => ({
-    content: [
-      {
-        type: 'text',
-        text: todoHandler.createTodo({ project_id, description, tasks }),
-      },
-    ],
-  })
+  async ({ project_id, description, tasks }) => {
+    const result = await todoHandler.createTodoAsync({ project_id, description, tasks });
+    return {
+      content: [
+        {
+          type: 'text',
+          text: result,
+        },
+      ],
+    };
+  }
 );
 
 server.registerTool(
   'add_todo_task',
   {
     title: 'Add TODO Task',
-    description: `Add a new task to an existing TODO list.
+    description: `Add a new task to an existing TODO list with full markdown support.
+Task content can include code blocks, lists, links, and any markdown formatting.
 Returns: {success: bool, task_number: int, message: str, error?: str}`,
     inputSchema: {
       project_id: secureProjectIdSchema.describe('The project identifier'),
       todo_number: secureTodoNumberSchema.describe('The TODO list number'),
-      description: secureTaskDescriptionSchema.describe('Description of the task'),
+      title: secureTaskTitleSchema.describe('Brief task title (max 200 chars, used in filename)'),
+      content: secureTaskContentSchema.describe(
+        'Full markdown content with implementation details, code examples, etc.'
+      ),
     },
   },
-  ({ project_id, todo_number, description }) => ({
-    content: [
-      {
-        type: 'text',
-        text: todoHandler.addTodoTask({ project_id, todo_number, description }),
-      },
-    ],
-  })
+  async (params) => {
+    const result = await todoHandler.addTodoTaskAsync(params);
+    return {
+      content: [
+        {
+          type: 'text',
+          text: result,
+        },
+      ],
+    };
+  }
 );
 
 server.registerTool(
@@ -473,14 +618,17 @@ Returns: {success: bool, message: str, error?: str}`,
       task_number: secureTodoNumberSchema.describe('The task number to remove'),
     },
   },
-  ({ project_id, todo_number, task_number }) => ({
-    content: [
-      {
-        type: 'text',
-        text: todoHandler.removeTodoTask({ project_id, todo_number, task_number }),
-      },
-    ],
-  })
+  async ({ project_id, todo_number, task_number }) => {
+    const result = await todoHandler.removeTodoTaskAsync({ project_id, todo_number, task_number });
+    return {
+      content: [
+        {
+          type: 'text',
+          text: result,
+        },
+      ],
+    };
+  }
 );
 
 server.registerTool(
@@ -495,14 +643,21 @@ Returns: {success: bool, message: str, error?: str}`,
       task_number: secureTodoNumberSchema.describe('The task number to complete'),
     },
   },
-  ({ project_id, todo_number, task_number }) => ({
-    content: [
-      {
-        type: 'text',
-        text: todoHandler.completeTodoTask({ project_id, todo_number, task_number }),
-      },
-    ],
-  })
+  async ({ project_id, todo_number, task_number }) => {
+    const result = await todoHandler.completeTodoTaskAsync({
+      project_id,
+      todo_number,
+      task_number,
+    });
+    return {
+      content: [
+        {
+          type: 'text',
+          text: result,
+        },
+      ],
+    };
+  }
 );
 
 server.registerTool(
@@ -516,14 +671,17 @@ Returns: {success: bool, task?: {number: int, description: str}, message?: str, 
       todo_number: secureTodoNumberSchema.describe('The TODO list number'),
     },
   },
-  ({ project_id, todo_number }) => ({
-    content: [
-      {
-        type: 'text',
-        text: todoHandler.getNextTodoTask({ project_id, todo_number }),
-      },
-    ],
-  })
+  async ({ project_id, todo_number }) => {
+    const result = await todoHandler.getNextTodoTaskAsync({ project_id, todo_number });
+    return {
+      content: [
+        {
+          type: 'text',
+          text: result,
+        },
+      ],
+    };
+  }
 );
 
 server.registerTool(
@@ -537,14 +695,17 @@ Returns: {success: bool, todo: {...}, tasks: [...], error?: str}`,
       todo_number: secureTodoNumberSchema.describe('The TODO list number'),
     },
   },
-  ({ project_id, todo_number }) => ({
-    content: [
-      {
-        type: 'text',
-        text: todoHandler.getTodoTasks({ project_id, todo_number }),
-      },
-    ],
-  })
+  async ({ project_id, todo_number }) => {
+    const result = await todoHandler.getTodoTasksAsync({ project_id, todo_number });
+    return {
+      content: [
+        {
+          type: 'text',
+          text: result,
+        },
+      ],
+    };
+  }
 );
 
 server.registerTool(
@@ -558,14 +719,17 @@ Returns: {success: bool, message: str, error?: str}`,
       todo_number: secureTodoNumberSchema.describe('The TODO list number to delete'),
     },
   },
-  ({ project_id, todo_number }) => ({
-    content: [
-      {
-        type: 'text',
-        text: todoHandler.deleteTodo({ project_id, todo_number }),
-      },
-    ],
-  })
+  async ({ project_id, todo_number }) => {
+    const result = await todoHandler.deleteTodoAsync({ project_id, todo_number });
+    return {
+      content: [
+        {
+          type: 'text',
+          text: result,
+        },
+      ],
+    };
+  }
 );
 
 // Register resources
@@ -578,7 +742,7 @@ server.registerResource(
     title: 'Project Main Instructions',
     description: 'Read-only access to project main.md file',
   },
-  (uri, params) => resourceHandler.getProjectMainResource(uri, params)
+  async (uri, params) => await resourceHandler.getProjectMainResourceAsync(uri, params)
 );
 
 server.registerResource(
@@ -590,7 +754,7 @@ server.registerResource(
     title: 'Knowledge Files',
     description: 'List all knowledge files in a project',
   },
-  (uri, params) => resourceHandler.listKnowledgeFilesResource(uri, params)
+  async (uri, params) => await resourceHandler.listKnowledgeFilesResourceAsync(uri, params)
 );
 
 server.registerResource(
@@ -602,7 +766,7 @@ server.registerResource(
     title: 'Document Chapters',
     description: 'List all chapters in a specific knowledge file',
   },
-  (uri, params) => resourceHandler.listChaptersResource(uri, params)
+  async (uri, params) => await resourceHandler.listChaptersResourceAsync(uri, params)
 );
 
 // Main function to run the server

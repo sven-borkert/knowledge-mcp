@@ -4,6 +4,14 @@
 
 The Knowledge MCP Server is a Model Context Protocol (MCP) server written in TypeScript that provides centralized project knowledge management. It replaces per-project CLAUDE.md files with a Git-backed centralized storage system, allowing AI assistants to maintain and access project-specific knowledge across multiple repositories.
 
+Key features include:
+
+- Main project instructions management (replaces CLAUDE.md)
+- Structured knowledge documents with metadata and search capabilities
+- TODO list management for tracking project tasks
+- Git-backed version control with automatic commits
+- Comprehensive error handling and request tracing
+
 ## Architecture
 
 ### Storage Location
@@ -14,6 +22,15 @@ All project knowledge is stored at: `~/.knowledge-mcp/projects/{project-id}/`
 - The entire directory is initialized as a Git repository for version tracking
 - All changes are automatically committed with descriptive messages
 - Activity logging tracks all method calls in `activity.log` (excluded from Git)
+
+Each project directory contains:
+
+- `main.md` - Main project instructions (replaces CLAUDE.md)
+- `knowledge/` - Structured knowledge documents
+- `TODO/` - TODO lists with numbered subdirectories (e.g., `TODO/1/`, `TODO/2/`)
+  - Each TODO directory contains:
+    - `index.json` - TODO metadata (description, created date)
+    - `TASK-XXX-*.json` - Individual task files with completion status
 
 ### Project Identification
 
@@ -115,7 +132,80 @@ Replaces the entire main.md file content.
 }
 ```
 
-#### 3. `search_knowledge`
+#### 3. `update_project_section`
+
+Updates a specific section within the project main.md file.
+
+**Input:**
+
+```json
+{
+  "project_id": "string",
+  "section_header": "string",
+  "new_content": "string"
+}
+```
+
+**Output:**
+
+```json
+{
+  "success": "boolean",
+  "message": "string"
+}
+```
+
+#### 4. `remove_project_section`
+
+Removes a specific section from the project main.md file.
+
+**Input:**
+
+```json
+{
+  "project_id": "string",
+  "section_header": "string"
+}
+```
+
+**Output:**
+
+```json
+{
+  "success": "boolean",
+  "message": "string"
+}
+```
+
+#### 5. `add_project_section`
+
+Adds a new section to the project main.md file. The section can be positioned at the end, or before/after a reference section.
+
+**Input:**
+
+```json
+{
+  "project_id": "string",
+  "section_header": "string",
+  "content": "string",
+  "position": "string (optional)",
+  "reference_header": "string (optional)"
+}
+```
+
+- `position`: Can be "before", "after", or "end" (default)
+- `reference_header`: Required when position is "before" or "after"
+
+**Output:**
+
+```json
+{
+  "success": "boolean",
+  "message": "string"
+}
+```
+
+#### 6. `search_knowledge`
 
 Searches knowledge documents with case-insensitive keyword matching.
 
@@ -160,7 +250,7 @@ Searches knowledge documents with case-insensitive keyword matching.
 }
 ```
 
-#### 4. `create_knowledge_file`
+#### 7. `create_knowledge_file`
 
 Creates a new knowledge document.
 
@@ -192,7 +282,7 @@ Creates a new knowledge document.
 }
 ```
 
-#### 5. `update_chapter`
+#### 8. `update_chapter`
 
 Updates a specific chapter within a knowledge document.
 
@@ -217,7 +307,59 @@ Updates a specific chapter within a knowledge document.
 }
 ```
 
-#### 6. `get_knowledge_file`
+#### 9. `remove_chapter`
+
+Removes a specific chapter from a knowledge document by title.
+
+**Input:**
+
+```json
+{
+  "project_id": "string",
+  "filename": "string",
+  "chapter_title": "string"
+}
+```
+
+**Output:**
+
+```json
+{
+  "success": "boolean",
+  "message": "string"
+}
+```
+
+#### 10. `add_chapter`
+
+Adds a new chapter to a knowledge document. The chapter can be positioned at the end, or before/after a reference chapter.
+
+**Input:**
+
+```json
+{
+  "project_id": "string",
+  "filename": "string",
+  "chapter_title": "string",
+  "content": "string",
+  "position": "string (optional)",
+  "reference_chapter": "string (optional)"
+}
+```
+
+- `position`: Can be "before", "after", or "end" (default)
+- `reference_chapter`: Required when position is "before" or "after"
+
+**Output:**
+
+```json
+{
+  "success": "boolean",
+  "message": "string"
+}
+```
+
+#### 11. `get_knowledge_file`
 
 Retrieves the complete content of a knowledge document including metadata, introduction, and all chapters. This tool enables full document download and backup functionality.
 
@@ -258,7 +400,7 @@ Retrieves the complete content of a knowledge document including metadata, intro
 
 The `full_content` field contains the raw markdown for exact reconstruction of the original document.
 
-#### 7. `delete_knowledge_file`
+#### 12. `delete_knowledge_file`
 
 Removes a knowledge document.
 
@@ -280,7 +422,7 @@ Removes a knowledge document.
 }
 ```
 
-#### 8. `delete_project`
+#### 13. `delete_project`
 
 Permanently deletes a project and all its content including the project directory and removes it from the index mapping.
 
@@ -310,7 +452,7 @@ Permanently deletes a project and all its content including the project director
 - `PROJECT_DELETE_FAILED`: Filesystem operation failed
 - `GIT_ERROR`: Git commit failed
 
-#### 9. `get_server_info`
+#### 14. `get_server_info`
 
 Shows server information including version from package.json.
 
@@ -332,7 +474,7 @@ Shows server information including version from package.json.
 }
 ```
 
-#### 10. `get_storage_status`
+#### 15. `get_storage_status`
 
 Shows git status of the knowledge datastore.
 
@@ -357,7 +499,7 @@ Shows git status of the knowledge datastore.
 }
 ```
 
-#### 11. `sync_storage`
+#### 16. `sync_storage`
 
 Force git add, commit, and push all changes in the knowledge datastore.
 
@@ -383,6 +525,233 @@ Force git add, commit, and push all changes in the knowledge datastore.
 
 - `GIT_ERROR`: Git operations failed
 - `FILE_SYSTEM_ERROR`: File access issues
+
+### TODO Management Tools
+
+The Knowledge MCP Server includes a comprehensive TODO management system for tracking tasks within projects. TODOs are stored as numbered directories within each project's TODO folder.
+
+#### 17. `list_todos`
+
+Lists all TODO lists in a project with their completion status.
+
+**Input:**
+
+```json
+{
+  "project_id": "string"
+}
+```
+
+**Output:**
+
+```json
+{
+  "success": true,
+  "todos": [
+    {
+      "number": 1,
+      "description": "Implement authentication system",
+      "created": "2024-01-01T12:00:00Z",
+      "completed": false,
+      "task_count": 5,
+      "completed_count": 2
+    }
+  ]
+}
+```
+
+#### 18. `create_todo`
+
+Creates a new TODO list with optional initial tasks.
+
+**Input:**
+
+```json
+{
+  "project_id": "string",
+  "description": "string",
+  "tasks": ["string"] // optional
+}
+```
+
+**Output:**
+
+```json
+{
+  "success": true,
+  "todo_number": 1,
+  "message": "Created TODO #1"
+}
+```
+
+#### 19. `add_todo_task`
+
+Adds a new task to an existing TODO list.
+
+**Input:**
+
+```json
+{
+  "project_id": "string",
+  "todo_number": 1,
+  "description": "string"
+}
+```
+
+**Output:**
+
+```json
+{
+  "success": true,
+  "task_number": 3,
+  "message": "Added task #3 to TODO #1"
+}
+```
+
+#### 20. `remove_todo_task`
+
+Removes a task from a TODO list.
+
+**Input:**
+
+```json
+{
+  "project_id": "string",
+  "todo_number": 1,
+  "task_number": 2
+}
+```
+
+**Output:**
+
+```json
+{
+  "success": true,
+  "message": "Removed task #2 from TODO #1"
+}
+```
+
+#### 21. `complete_todo_task`
+
+Marks a task as completed in a TODO list.
+
+**Input:**
+
+```json
+{
+  "project_id": "string",
+  "todo_number": 1,
+  "task_number": 2
+}
+```
+
+**Output:**
+
+```json
+{
+  "success": true,
+  "message": "Marked task #2 as completed in TODO #1"
+}
+```
+
+#### 22. `get_next_todo_task`
+
+Gets the next incomplete task in a TODO list.
+
+**Input:**
+
+```json
+{
+  "project_id": "string",
+  "todo_number": 1
+}
+```
+
+**Output:**
+
+```json
+{
+  "success": true,
+  "task": {
+    "number": 3,
+    "description": "Implement login endpoint"
+  }
+}
+```
+
+Or when all tasks are completed:
+
+```json
+{
+  "success": true,
+  "message": "All tasks completed"
+}
+```
+
+#### 23. `get_todo_tasks`
+
+Gets all tasks in a TODO list with their completion status.
+
+**Input:**
+
+```json
+{
+  "project_id": "string",
+  "todo_number": 1
+}
+```
+
+**Output:**
+
+```json
+{
+  "success": true,
+  "todo": {
+    "number": 1,
+    "description": "API Development",
+    "created": "2024-01-01T12:00:00Z"
+  },
+  "tasks": [
+    {
+      "number": 1,
+      "description": "Design API schema",
+      "completed": true
+    },
+    {
+      "number": 2,
+      "description": "Implement endpoints",
+      "completed": false
+    }
+  ]
+}
+```
+
+#### 24. `delete_todo`
+
+Deletes an entire TODO list and all its tasks.
+
+**Input:**
+
+```json
+{
+  "project_id": "string",
+  "todo_number": 1
+}
+```
+
+**Output:**
+
+```json
+{
+  "success": true,
+  "message": "Deleted TODO #1"
+}
+```
+
+**Error Cases for TODO Operations:**
+
+- `TODO_NOT_FOUND`: TODO list doesn't exist
+- `TODO_TASK_NOT_FOUND`: Task doesn't exist in TODO list
 
 ### Resources (Read-Only)
 
@@ -496,6 +865,11 @@ The system uses typed error codes for consistent error handling:
 
 - `SEARCH_ERROR` - Search operation failed
 - `INVALID_SEARCH_QUERY` - Invalid search query format
+
+**TODO Management Errors:**
+
+- `TODO_NOT_FOUND` - TODO list doesn't exist
+- `TODO_TASK_NOT_FOUND` - Task doesn't exist in TODO list
 
 #### Request Tracing
 
@@ -728,49 +1102,47 @@ Start by using 'get_project_main' with the project_id to retrieve project-specif
 
 The TypeScript implementation includes comprehensive automated tests:
 
-### Interface Tests (`test/interface-test.ts`)
+### Test Suite Organization
 
-- **20 comprehensive tests** covering all MCP operations
+The test suite has been refactored into feature-based modules for better organization:
+
+- **127 comprehensive tests** across 10 test suites
 - Tests run against the compiled server using MCP client SDK
 - 100% test pass rate validates API compatibility
 
-Test categories:
+Test suites:
 
-1. **Project Management** (4 tests)
-   - Create, retrieve, update projects
-   - Handle non-existent projects
-
-2. **Knowledge Documents** (4 tests)
-   - Create structured documents
-   - Handle special characters in filenames
-   - Get full knowledge documents
-   - Handle non-existent documents
-
-3. **Search Operations** (2 tests)
-   - Single/multiple keyword search
-   - Case-insensitive matching
-
-4. **Chapter Updates** (2 tests)
-   - Update existing chapters
-   - Handle non-existent chapters
-
-5. **File Deletion** (2 tests)
-   - Delete existing files
-   - Handle non-existent files
-
-6. **Resource Endpoints** (3 tests)
-   - List files, chapters, read main
-
-7. **Server Management** (3 tests)
-   - Get server information
-   - Get storage status
-   - Sync storage operations
+1. **01-project-main.test.ts** - Project main document operations
+2. **02-project-sections.test.ts** - Section management (add, update, remove)
+3. **03-knowledge-files.test.ts** - Knowledge document CRUD operations
+4. **04-chapters.test.ts** - Chapter management within documents
+5. **05-search.test.ts** - Search functionality across documents
+6. **06-resources.test.ts** - Read-only resource endpoints
+7. **07-server-management.test.ts** - Server info and storage sync
+8. **08-todo.test.ts** - TODO list and task management
+9. **09-error-handling.test.ts** - Error scenarios and validation
+10. **10-edge-cases.test.ts** - Unicode, large files, special characters
 
 ### Running Tests
 
 ```bash
-pnpm run test:interface  # Run automated interface tests
-npx @modelcontextprotocol/inspector node dist/knowledge-mcp/index.js  # Interactive testing
+# Run all tests
+pnpm run test
+
+# Run individual test suites
+pnpm run test:suite:01  # Project main tests
+pnpm run test:suite:02  # Project sections tests
+pnpm run test:suite:03  # Knowledge files tests
+pnpm run test:suite:04  # Chapters tests
+pnpm run test:suite:05  # Search tests
+pnpm run test:suite:06  # Resources tests
+pnpm run test:suite:07  # Server management tests
+pnpm run test:suite:08  # TODO tests
+pnpm run test:suite:09  # Error handling tests
+pnpm run test:suite:10  # Edge cases tests
+
+# Interactive testing with MCP Inspector
+npx @modelcontextprotocol/inspector node dist/knowledge-mcp/index.js
 ```
 
 ## Deployment

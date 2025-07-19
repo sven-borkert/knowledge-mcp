@@ -1,45 +1,87 @@
 # Knowledge MCP Server
 
-🚀 **Keep AI instruction files out of your project repositories by storing them in a centralized, searchable knowledge base that AI assistants can automatically access.**
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue.svg)](https://www.typescriptlang.org/)
+[![Tests](https://img.shields.io/badge/Tests-133/133_passing-green.svg)](#testing)
+[![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![MCP Compatible](https://img.shields.io/badge/MCP-Compatible-purple.svg)](https://modelcontextprotocol.io/)
 
-The Knowledge MCP Server provides persistent project-specific knowledge management through the Model Context Protocol. It automatically identifies projects, stores instructions and documentation separately from your codebase, and makes them instantly searchable.
+A production-ready Model Context Protocol (MCP) server that provides centralized knowledge management for AI assistants. Features project-specific documentation, searchable knowledge bases, integrated TODO management, and Git-backed version control for persistent AI memory across sessions.
 
-## ✨ Key Benefits
+## 🚀 Features
 
-- **Automatic Project Detection**: Identifies projects by git remote or directory name
-- **Keeps Repositories Clean**: Stores AI instructions outside of project repositories
-- **Searchable Knowledge**: Find information across all project documents
-- **Persistent Memory**: Knowledge survives between sessions
-- **No Repository Pollution**: AI-specific files stay out of your codebase
-- **Version Controlled**: All changes tracked with Git
-- **Automatic Backup**: Changes pushed to origin/main when available
-- **Secure**: Path validation and input sanitization
-- **TODO Management**: Track development tasks per project with sequential numbering
+- **📝 Project Knowledge Management**: Centralized storage for project instructions and documentation
+- **🔍 Advanced Search**: Full-text search across all knowledge documents with contextual results
+- **📋 TODO System**: Built-in task management with markdown support and progress tracking
+- **🔐 Security-First**: Comprehensive input validation, path sanitization, and abstraction boundaries
+- **⚡ High Performance**: Optimized for concurrent operations with sophisticated file locking
+- **📊 Request Tracing**: Unique trace IDs for debugging and monitoring
+- **🔄 Git Integration**: Automatic version control with descriptive commit messages
+- **🧪 Battle-Tested**: 133 comprehensive tests covering all functionality and edge cases
 
-## 🚀 Quick Start
+## 📦 Installation
 
-### 1. Install the MCP Server
-
-The server can be installed in various ways depending on your MCP client:
-
-#### Using NPM (Global Install)
+### NPM (Recommended)
 
 ```bash
 npm install -g @spothlynx/knowledge-mcp
 ```
 
-#### From Source
+### From Source
 
 ```bash
 git clone https://github.com/sven-borkert/knowledge-mcp.git
 cd knowledge-mcp
 pnpm install
 pnpm run build
+npm link
 ```
 
-### 2. Configure Your MCP Client
+## 🛠️ Usage
 
-Configure your MCP client to automatically use the Knowledge MCP. For example, if your AI assistant supports global instruction files, you might add:
+### MCP Client Configuration
+
+Add to your MCP client configuration:
+
+```json
+{
+  "mcpServers": {
+    "knowledge": {
+      "command": "knowledge-mcp",
+      "args": []
+    }
+  }
+}
+```
+
+### Claude Desktop Configuration
+
+Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "knowledge": {
+      "command": "knowledge-mcp"
+    }
+  }
+}
+```
+
+### Direct Execution
+
+```bash
+# Start the MCP server
+knowledge-mcp
+
+# Development mode with auto-reload
+pnpm run dev
+```
+
+## 🤖 AI Assistant Configuration
+
+### Automatic MCP Usage
+
+Configure your AI assistant to automatically use the Knowledge MCP by adding this to your global instruction file (e.g., `~/.claude/CLAUDE.md`):
 
 ```markdown
 # 🧠 Knowledge MCP Auto-Usage
@@ -60,31 +102,24 @@ IMPORTANT: This system uses the Knowledge MCP Server for project knowledge.
 - create_knowledge_file - Document new learnings
 - update_chapter - Update existing documentation
 
-## TODO Management (Use only when explicitly requested):
-
-- list_todos - See all TODO lists when user asks to check TODOs
-- create_todo - Create TODO list when user asks to save a plan
-- get_next_todo_task - Use when working through a TODO list
-- complete_todo_task - Mark tasks done as you complete them
-
-NEVER read local project instruction files directly - always use the Knowledge MCP.
+NEVER read local CLAUDE.md files directly - always use the Knowledge MCP.
 ```
 
-This configuration ensures your AI assistant will automatically check for project knowledge at the start of every conversation.
+### TODO Management Guidelines
 
-### Using TODO Management
-
-The Knowledge MCP includes a built-in TODO management system for tracking development tasks. Use it only when explicitly requested:
+For AI assistants, use TODO features **only when explicitly requested**:
 
 ```markdown
 ## TODO Usage Guidelines for AI Assistants:
 
 DO NOT automatically check or create TODOs. Only use TODO features when the user explicitly:
+
 - Asks to "save this plan as a TODO"
 - Says "work on TODO #X" or "continue with the TODO list"
 - Requests to "check my TODOs" or "list TODOs"
 
 When asked to work on a TODO:
+
 1. Get all tasks with get_todo_tasks(project_id, todo_number)
 2. Work through ALL incomplete tasks sequentially
 3. Use get_next_todo_task to identify what to do next
@@ -92,15 +127,14 @@ When asked to work on a TODO:
 5. Continue until all tasks are done or you encounter a blocker
 
 Example scenarios:
+
 - User: "Save this plan as a TODO" → Create TODO with the plan's steps
 - User: "Work on TODO #1" → Get tasks and complete them all
 - User: "What TODOs do I have?" → List TODOs for the project
 - User: "Help me implement authentication" → DO NOT create a TODO unless asked
 ```
 
-This ensures TODOs are used intentionally for explicit task tracking, not automatic workflow management.
-
-## 📦 Client-Specific Configuration Examples
+## 📦 Client-Specific Configuration
 
 ### Claude Code
 
@@ -132,7 +166,7 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
 
 ### Generic MCP Configuration
 
-For other MCP-compatible clients, configure the server with:
+For other MCP-compatible clients:
 
 ```json
 {
@@ -147,34 +181,48 @@ For other MCP-compatible clients, configure the server with:
 }
 ```
 
-## 🔧 Configuration
+## 🔄 Version Management
+
+### Why Use `@latest` and `-y` Flags
+
+- **`-y` flag**: Automatically accepts npx installation prompt without user interaction
+- **`@latest` tag**: Forces npx to fetch the newest version instead of using cached versions
+
+**Important**: NPX caches packages indefinitely. Without `@latest`, you might run outdated versions.
+
+### Updating to Latest Version
+
+```bash
+# Remove and re-add to ensure latest version
+claude mcp remove knowledge-mcp
+claude mcp add knowledge-mcp npx -- -y @spothlynx/knowledge-mcp@latest
+```
+
+### Configuration Precedence
+
+Most MCP clients support multiple configuration levels:
+
+1. **User-level (Global)**: Applies to all projects
+2. **Project-level**: Applies to current project only
+3. **Configuration files**: Manual configuration files
+
+Higher-level configurations typically override lower-level ones.
+
+## 🛡️ Environment Configuration
 
 ### Environment Variables
 
 - `KNOWLEDGE_MCP_HOME`: Storage directory (default: `~/.knowledge-mcp`)
-- `KNOWLEDGE_MCP_LOG_LEVEL`: Log level options: `ERROR`, `WARN`, `INFO`, `DEBUG` (default: `INFO`)
-
-## 📖 How It Works
+- `KNOWLEDGE_MCP_LOG_LEVEL`: Log level: `ERROR`, `WARN`, `INFO`, `DEBUG` (default: `INFO`)
 
 ### Automatic Project Identification
 
-The Knowledge MCP automatically identifies your project based on:
+The Knowledge MCP automatically identifies projects based on:
 
-- **Git repositories**: Uses the repository name from git remote URL
-- **Non-git directories**: Uses the current directory name
+- **Git repositories**: Uses repository name from git remote URL
+- **Non-git directories**: Uses current directory name
 
 Example: `/path/to/my-awesome-project/.git` → project_id = "my-awesome-project"
-
-### Workflow Example
-
-```bash
-# 1. Navigate to your project
-cd ~/projects/my-app
-
-# 2. Your AI assistant automatically calls get_project_main("my-app")
-# 3. Knowledge is retrieved from central storage, not from your repository
-# 4. All future sessions use the centralized knowledge
-```
 
 ### Storage Structure
 
@@ -182,267 +230,190 @@ cd ~/projects/my-app
 ~/.knowledge-mcp/
 ├── .git/                      # Git repository (auto-initialized)
 ├── index.json                 # Project name mapping
+├── activity.log              # Request activity log (gitignored)
 └── projects/
     └── my-app/
-        ├── main.md            # Project instructions (stored centrally, not in repository)
+        ├── main.md            # Project instructions (centralized, not in repo)
         ├── knowledge/
         │   ├── api-guide.md   # Structured knowledge documents
         │   └── architecture.md
         └── TODO/              # TODO lists for the project
             ├── 1/             # First TODO list
-            │   ├── index.json # TODO metadata
-            │   └── TASK-*.json # Individual task files
+            │   ├── index.md   # TODO metadata
+            │   └── tasks/     # Individual task files
             └── 2/             # Second TODO list
 ```
 
-### Automatic Backup
+### Git Remote Setup (Recommended)
 
-The Knowledge MCP automatically backs up your knowledge:
-
-1. All changes are committed to a local Git repository
-2. If you configure a remote repository, changes are pushed automatically
-3. To enable cloud backup:
-   ```bash
-   cd ~/.knowledge-mcp
-   git remote add origin YOUR_GITHUB_REPO_URL
-   ```
-
-## 🔗 Git Remote Setup (Recommended)
-
-Setting up a git remote enables automatic cloud backup and synchronization across devices:
-
-### Step 1: Create a Remote Repository
-
-Create a new repository on GitHub, GitLab, or your preferred git hosting service.
-
-### Step 2: Configure the Remote
+Enable automatic cloud backup:
 
 ```bash
+# 1. Create repository on GitHub/GitLab
+# 2. Configure remote
 cd ~/.knowledge-mcp
 git remote add origin https://github.com/yourusername/knowledge-mcp-backup.git
 git push -u origin main
-```
 
-### Step 3: Set Up Authentication
-
-Ensure your git credentials are configured for automatic push/pull:
-
-```bash
-# For GitHub with token
-git config credential.helper store
-# Then push once to store credentials
-
-# Or use SSH keys (recommended)
+# 3. Set up authentication (SSH recommended)
 git remote set-url origin git@github.com:yourusername/knowledge-mcp-backup.git
 ```
 
-### Startup Synchronization
+**⚠️ Important**: On startup, Knowledge MCP pulls from `origin/main` and overwrites local changes.
 
-⚠️ **Important**: On every startup, the Knowledge MCP will:
-
-1. **Pull** the latest changes from `origin/main`
-2. **Overwrite** any local changes with remote content
-3. Continue with normal operations
-
-This ensures your knowledge stays synchronized across devices but **local changes will be lost** if not pushed to the remote repository.
-
-## 🛠️ Available Tools
+## 📚 API Reference
 
 ### Core Tools
 
-| Tool                     | Purpose                    | Usage                  |
-| ------------------------ | -------------------------- | ---------------------- |
-| `get_project_main`       | Get project instructions   | Always call first      |
-| `update_project_main`    | Create/update instructions | Migrate CLAUDE.md      |
-| `update_project_section` | Update specific section    | Efficient updates      |
-| `remove_project_section` | Remove section             | Clean up outdated info |
-| `delete_project`         | Delete entire project      | Permanent removal      |
-| `search_knowledge`       | Search all documents       | Find before asking     |
-| `create_knowledge_file`  | Create knowledge doc       | Document learnings     |
-| `update_chapter`         | Update chapter             | Refine documentation   |
-| `remove_chapter`         | Remove chapter             | Clean up docs          |
-| `get_knowledge_file`     | Get full document          | Export/backup          |
-| `delete_knowledge_file`  | Delete document            | Remove obsolete docs   |
-| `get_server_info`        | Get server information     | Check version/status   |
-| `get_storage_status`     | Get git storage status     | Monitor repository     |
-| `sync_storage`           | Force git sync             | Manual backup/push     |
+#### Project Management
+- `get_project_main(project_id)` - Retrieve main project instructions
+- `update_project_main(project_id, content)` - Update project instructions
+- `update_project_section(project_id, section_header, new_content)` - Update specific section
+- `add_project_section(project_id, section_header, content, position?, reference_header?)` - Add new section
+- `remove_project_section(project_id, section_header)` - Remove section
+- `delete_project(project_id)` - Delete entire project
 
-### TODO Management Tools
+#### Knowledge Documents
+- `create_knowledge_file(project_id, filename, title, introduction, keywords, chapters)` - Create structured document
+- `get_knowledge_file(project_id, filename)` - Retrieve complete document
+- `delete_knowledge_file(project_id, filename)` - Delete document
+- `update_chapter(project_id, filename, chapter_title, new_content, new_summary?)` - Update chapter
+- `add_chapter(project_id, filename, chapter_title, content, position?, reference_chapter?)` - Add chapter
+- `remove_chapter(project_id, filename, chapter_title)` - Remove chapter
 
-| Tool                  | Purpose                    | Usage                     |
-| --------------------- | -------------------------- | ------------------------- |
-| `list_todos`          | List all TODO lists        | See project tasks         |
-| `create_todo`         | Create new TODO            | Start tracking tasks      |
-| `add_todo_task`       | Add task to TODO           | Expand existing TODO      |
-| `remove_todo_task`    | Remove a task              | Clean up mistakes         |
-| `complete_todo_task`  | Mark task as done          | Track progress            |
-| `get_next_todo_task`  | Get next incomplete task   | Focus on what's next      |
-| `get_todo_tasks`      | Get all tasks in TODO      | Review full TODO list     |
-| `delete_todo`         | Delete entire TODO         | Clean up completed TODOs  |
+#### Search & Discovery
+- `search_knowledge(project_id, query)` - Full-text search across all documents
 
-### Resources (Read-Only)
+#### TODO Management
+- `list_todos(project_id)` - List all TODO lists
+- `create_todo(project_id, description, tasks?)` - Create new TODO list
+- `get_todo_tasks(project_id, todo_number)` - Get tasks in TODO list
+- `add_todo_task(project_id, todo_number, title, content?)` - Add task
+- `complete_todo_task(project_id, todo_number, task_number)` - Mark task complete
+- `get_next_todo_task(project_id, todo_number)` - Get next incomplete task
+- `remove_todo_task(project_id, todo_number, task_number)` - Remove task
+- `delete_todo(project_id, todo_number)` - Delete entire TODO list
 
-- `knowledge://projects/{project_id}/main` - Read project instructions
-- `knowledge://projects/{project_id}/files` - List knowledge files
-- `knowledge://projects/{project_id}/chapters/{filename}` - List chapters
+#### Server Operations
+- `get_server_info()` - Get server version and configuration
+- `get_storage_status()` - Get Git repository status
+- `sync_storage()` - Force Git commit and sync
 
-### Example: Creating a Knowledge Document
+### Resources
 
-```json
-{
-  "project_id": "my-app",
-  "filename": "api-guide",
-  "title": "API Documentation",
-  "introduction": "REST API endpoints and authentication",
-  "keywords": ["api", "rest", "auth"],
-  "chapters": [
-    {
-      "title": "Authentication",
-      "content": "Use Bearer tokens..."
-    }
-  ]
-}
+The server provides read-only resources for browsing:
+
+- `knowledge://projects/{project_id}/main` - Project main instructions
+- `knowledge://projects/{project_id}/files` - List of knowledge files
+- `knowledge://projects/{project_id}/chapters/{filename}` - Chapter listings
+
+## 🏗️ Architecture
+
+### Storage Structure
+
+```
+~/.knowledge-mcp/
+├── index.json                 # Project name to directory mapping
+├── activity.log              # Request activity log (gitignored)
+└── projects/
+    └── {project-slug}/        # Slugified project directory
+        ├── main.md            # Main project instructions
+        ├── knowledge/         # Knowledge documents
+        │   └── *.md           # Individual knowledge files
+        └── TODO/              # TODO lists
+            └── {number}/      # Numbered TODO directories
+                ├── index.md   # TODO metadata
+                └── tasks/     # Individual task files
+                    └── *.md
 ```
 
-### Example: TODO Management Workflow
-
-```bash
-# 1. Create a TODO with initial tasks
-create_todo({
-  "project_id": "my-app",
-  "description": "Implement user authentication",
-  "tasks": ["Create user model", "Add password hashing", "Setup JWT tokens"]
-})
-
-# 2. Get the next task to work on
-get_next_todo_task({"project_id": "my-app", "todo_number": 1})
-# Returns: {"number": 1, "description": "Create user model"}
-
-# 3. Complete the task
-complete_todo_task({"project_id": "my-app", "todo_number": 1, "task_number": 1})
-
-# 4. Add a new task if needed
-add_todo_task({
-  "project_id": "my-app", 
-  "todo_number": 1,
-  "description": "Add email validation"
-})
-```
-
-## 📦 Version Management
-
-### Why We Use `-y` and `@latest`
-
-The installation commands include specific flags to ensure you always get the newest version:
-
-- **`-y` flag**: Automatically accepts the npx installation prompt without user interaction
-- **`@latest` tag**: Forces npx to fetch the newest version instead of using cached versions
-
-**Important**: NPX caches packages indefinitely and won't check for updates automatically. Without `@latest`, you might be running an outdated version even if updates are available.
-
-### Updating to Latest Version
-
-If you installed without `@latest`, simply remove and re-add:
-
-```bash
-claude mcp remove knowledge-mcp
-claude mcp add knowledge-mcp npx -- -y @spothlynx/knowledge-mcp@latest
-```
-
-## 🎯 MCP Configuration Precedence
-
-### Understanding Configuration Levels
-
-Most MCP clients support multiple configuration levels. For example, in Claude Code:
-
-1. **User-level (Global)**: Applies to all projects
-2. **Project-level**: Applies to current project only
-3. **Configuration files**: Manual configuration files (e.g., `.mcp.json`)
-
-**Important**: Higher-level configurations typically override lower-level ones. Check your MCP client's documentation for specific precedence rules.
-
-### Verifying Your Current Version
-
-To check which version of Knowledge MCP is currently active, use your MCP client's listing command. For example:
-
-```bash
-# Claude Code example:
-claude mcp list | grep knowledge-mcp
-
-# For development: Should show local path
-# Example: knowledge-mcp: node /path/to/knowledge-mcp/dist/knowledge-mcp/index.js
-
-# For production: Should show npx with @latest
-# Example: knowledge-mcp: npx -y @spothlynx/knowledge-mcp@latest
-```
-
-### Ensuring You're Using the Latest Version
-
-#### For Production Users
-
-Always use the `@latest` tag to bypass npx cache:
-
-```bash
-# Example for Claude Code:
-# Remove any existing configuration
-claude mcp remove knowledge-mcp -s local  # Remove global config
-claude mcp remove knowledge-mcp -s project # Remove project config
-
-# Add with @latest tag to force newest version
-claude mcp add knowledge-mcp npx -- -y @spothlynx/knowledge-mcp@latest
-```
-
-#### For Development
-
-When developing or testing local changes:
-
-```bash
-# Point to your local build (example for Claude Code)
-claude mcp add knowledge-mcp node /path/to/knowledge-mcp/dist/knowledge-mcp/index.js
-
-# After making changes, rebuild
-cd /path/to/knowledge-mcp
-pnpm run build
-
-# Restart your MCP client to load the updated build
-```
-
-### Troubleshooting Version Issues
-
-If you're not getting the expected version:
-
-1. **Check all configuration scopes**:
-
-   ```bash
-   # Example for Claude Code:
-   claude mcp list  # Shows all configurations
-   ```
-
-2. **Clear npx cache** if using published version:
-
-   ```bash
-   # Remove cached versions
-   rm -rf ~/.npm/_npx
-
-   # Reinstall with @latest
-   claude mcp remove knowledge-mcp
-   claude mcp add knowledge-mcp npx -- -y @spothlynx/knowledge-mcp@latest
-   ```
-
-3. **Verify the loaded version**:
-   ```bash
-   # Check server info using your MCP client
-   # For example, in Claude Code: /mcp
-   # Look for "Knowledge MCP Server" version number
-   ```
-
-## 🛡️ Security & Reliability
+### Security Features
 
 - **Path Validation**: Prevents directory traversal attacks
-- **Input Sanitization**: Safe handling of filenames and content
-- **Atomic Operations**: No partial writes or data corruption
-- **Git Versioning**: Every change tracked automatically
-- **Request Tracing**: Unique IDs for debugging
+- **Input Sanitization**: Comprehensive validation with Zod schemas
+- **Abstraction Boundaries**: Internal paths never exposed to clients
+- **Atomic Operations**: File operations use temp-file + rename pattern
+- **Request Tracing**: Unique trace IDs for all operations
+
+### Concurrency & Performance
+
+- **File Locking**: Queue-based locking prevents race conditions
+- **Atomic Updates**: All file operations are atomic
+- **Efficient Search**: Optimized full-text search with result limiting
+- **Memory Management**: Controlled memory usage for large documents
+
+## 🧪 Testing
+
+The project includes comprehensive test coverage:
+
+```bash
+# Run all tests
+pnpm run test:all
+
+# Run specific test suite
+npx tsx test/suites/01-project-main.test.ts
+
+# Generate HTML test report
+pnpm run test:all && open test-results/html/merged-results.html
+```
+
+### Test Coverage
+
+- **133 tests** across 11 comprehensive test suites
+- **100% success rate** in CI/CD pipeline
+- **Edge cases** including concurrency, unicode, and error conditions
+- **Security tests** for abstraction boundaries and input validation
+- **Performance tests** for high-load scenarios
+
+## 🔧 Development
+
+### Prerequisites
+
+- Node.js 18+ 
+- pnpm (recommended) or npm
+- TypeScript 5.7+
+
+### Development Workflow
+
+```bash
+# Install dependencies
+pnpm install
+
+# Start development server with auto-reload
+pnpm run dev
+
+# Build for production
+pnpm run build
+
+# Run type checking
+pnpm run type-check
+
+# Run linter
+pnpm run lint
+
+# Format code
+pnpm run format
+
+# Run all quality checks
+pnpm run analyze
+```
+
+### Code Quality
+
+The project enforces high code quality standards:
+
+- **TypeScript**: Strict mode with comprehensive type checking
+- **ESLint**: Comprehensive linting with TypeScript support
+- **Prettier**: Consistent code formatting
+- **Static Analysis**: Zero warnings policy
+- **Test Coverage**: All functionality thoroughly tested
+
+## 📖 Documentation
+
+- **[Technical Specification](docs/technical-specification.md)** - Complete API reference and architecture
+- **[Error Handling Guide](docs/error-handling-guide.md)** - Error codes and debugging
+- **[MCP Security Guidelines](docs/mcp-security-guidelines.md)** - Security best practices
+- **[Publishing Guidelines](docs/publishing-guidelines.md)** - Release and deployment process
 
 ## 🐛 Troubleshooting
 
@@ -451,7 +422,7 @@ If you're not getting the expected version:
 1. **"spawn npx ENOENT" or "Connection closed"**
 
    ```bash
-   # Remove and re-add to ensure latest version (example for Claude Code)
+   # Remove and re-add to ensure latest version
    claude mcp remove knowledge-mcp
    claude mcp add knowledge-mcp npx -- -y @spothlynx/knowledge-mcp@latest
    ```
@@ -459,94 +430,124 @@ If you're not getting the expected version:
 2. **Permission errors**
 
    ```bash
-   # Ensure storage directory exists
+   # Ensure storage directory exists and is writable
    mkdir -p ~/.knowledge-mcp
+   chmod 755 ~/.knowledge-mcp
    ```
 
-3. **Check logs for debugging**
+3. **NPX cache issues**
 
    ```bash
-   # View MCP logs (location varies by client)
-   # For Claude Code:
-   # ls ~/Library/Caches/claude-cli-nodejs/*/mcp-logs-knowledge-mcp/
-
-   # View activity logs with trace IDs
-   tail -f ~/.knowledge-mcp/activity.log
+   # Clear NPX cache if using published version
+   rm -rf ~/.npm/_npx
+   
+   # Reinstall with @latest
+   claude mcp remove knowledge-mcp
+   claude mcp add knowledge-mcp npx -- -y @spothlynx/knowledge-mcp@latest
    ```
+
+4. **Version conflicts**
+
+   ```bash
+   # Check all configuration scopes
+   claude mcp list
+   
+   # Remove from all scopes and re-add
+   claude mcp remove knowledge-mcp -s global
+   claude mcp remove knowledge-mcp -s project
+   claude mcp add knowledge-mcp npx -- -y @spothlynx/knowledge-mcp@latest
+   ```
+
+### Debugging with Logs
+
+```bash
+# View MCP logs (location varies by client)
+# For Claude Code:
+ls ~/Library/Caches/claude-cli-nodejs/*/mcp-logs-knowledge-mcp/
+
+# View activity logs with trace IDs
+tail -f ~/.knowledge-mcp/activity.log
+
+# Check Git repository status
+cd ~/.knowledge-mcp && git status
+```
 
 ### Error Codes
 
-- `PROJECT_NOT_FOUND` - Project doesn't exist yet
+The Knowledge MCP uses standardized error codes for debugging:
+
+- `PROJECT_NOT_FOUND` - Project doesn't exist yet (call `update_project_main` to create)
 - `DOCUMENT_NOT_FOUND` - Knowledge file not found
-- `FILE_ALREADY_EXISTS` - File already exists
-- `INVALID_INPUT` - Invalid parameters
+- `FILE_ALREADY_EXISTS` - File already exists (use update instead of create)
+- `SECTION_NOT_FOUND` - Section header not found in document
+- `SECTION_ALREADY_EXISTS` - Section header already exists
+- `INVALID_INPUT` - Invalid parameters (check Zod validation errors)
 - `TODO_NOT_FOUND` - TODO list doesn't exist
 - `TODO_TASK_NOT_FOUND` - Task not found in TODO list
-- `INVALID_TODO_NUMBER` - Invalid TODO number format
+- `FILE_SYSTEM_ERROR` - File operation failed
+- `GIT_ERROR` - Git operation failed
 
-See [Error Handling Guide](docs/error-handling-guide.md) for details.
+Each error includes a unique `traceId` for debugging. Search logs using: `grep "traceId" ~/.knowledge-mcp/activity.log`
 
-## 💻 Development
-
-### Requirements
-
-- Node.js 18+
-- Git
-- pnpm (recommended) or npm
-
-### Development Commands
+### Verifying Installation
 
 ```bash
-# Clone and setup
-git clone https://github.com/sven-borkert/knowledge-mcp.git
-cd knowledge-mcp
-pnpm install
+# Check if Knowledge MCP is properly configured
+claude mcp list | grep knowledge-mcp
 
-# Development
-pnpm run dev          # Watch mode
-pnpm run build        # Build TypeScript
-pnpm run test:interface # Run tests
-pnpm run lint         # Check code quality
-pnpm run format       # Format code
+# Test basic functionality (if using Claude Code)
+# Should return server information
+/mcp knowledge get_server_info
 
-# Test with MCP Inspector
-npx @modelcontextprotocol/inspector node dist/knowledge-mcp/index.js
+# Verify storage directory
+ls -la ~/.knowledge-mcp/
 ```
 
-## 📦 Updates
+### Performance Issues
 
-```bash
-# Update using npm
-npm update -g @spothlynx/knowledge-mcp
+If experiencing slow performance:
 
-# Or for Claude Code users:
-claude mcp update knowledge-mcp
-```
+1. **Large knowledge base**: Consider splitting large documents
+2. **Git repository size**: Archive old projects or use shallow clones
+3. **Concurrent operations**: File locking ensures safety but may slow bulk operations
+4. **Search performance**: Use specific keywords instead of broad queries
+
+See [Error Handling Guide](docs/error-handling-guide.md) for detailed debugging information.
 
 ## 🤝 Contributing
 
-Contributions welcome! Please:
-
 1. Fork the repository
-2. Create a feature branch
-3. Run tests before submitting
-4. Submit a pull request
+2. Create a feature branch: `git checkout -b feature/amazing-feature`
+3. Make your changes and add tests
+4. Ensure all tests pass: `pnpm run test:all`
+5. Run quality checks: `pnpm run analyze`
+6. Commit your changes: `git commit -m 'Add amazing feature'`
+7. Push to the branch: `git push origin feature/amazing-feature`
+8. Open a Pull Request
 
-See [Publishing Guidelines](docs/publishing-guidelines.md) for maintainer instructions.
+### Development Standards
+
+- All new features must include comprehensive tests
+- Code must pass all static analysis checks
+- Documentation must be updated for API changes
+- Security considerations must be addressed
 
 ## 📄 License
 
-MIT - See [LICENSE](LICENSE) file
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## 🙏 Acknowledgments
 
-- Built with [Model Context Protocol SDK](https://github.com/modelcontextprotocol/sdk)
-- Inspired by the need for persistent project knowledge in AI development
+- **Model Context Protocol** - For the excellent MCP specification
+- **TypeScript Community** - For outstanding tooling and ecosystem
+- **Contributors** - For making this project better
+
+## 📞 Support
+
+- **Issues**: [GitHub Issues](https://github.com/sven-borkert/knowledge-mcp/issues)
+- **Documentation**: [Technical Specification](docs/technical-specification.md)
+- **MCP Protocol**: [Official Documentation](https://modelcontextprotocol.io/)
 
 ---
 
-<p align="center">
-  <a href="https://github.com/sven-borkert/knowledge-mcp/issues">Report Issues</a> •
-  <a href="https://github.com/sven-borkert/knowledge-mcp/releases">Changelog</a> •
-  <a href="docs/technical-specification.md">Technical Docs</a>
-</p>
+**Built with ❤️ using TypeScript and the Model Context Protocol**

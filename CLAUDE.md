@@ -66,7 +66,8 @@ knowledge-mcp/
 ├── dist/                      # Compiled JavaScript (git-ignored)
 │   └── knowledge-mcp/         # Built files
 ├── test/                      # Test suite
-│   └── interface-test.ts      # MCP interface tests
+│   ├── run-all-tests.ts       # Test runner for all suites
+│   └── suites/                # Modular test suites
 ├── docs/                      # Documentation
 │   ├── README.md              # Documentation index
 │   ├── technical-specification.md
@@ -198,7 +199,7 @@ pnpm run fix:all
 
 ```bash
 # Run interface tests
-pnpm run test:interface
+pnpm run test
 
 # Test with MCP Inspector
 npx @modelcontextprotocol/inspector node dist/knowledge-mcp/index.js
@@ -210,7 +211,7 @@ npx @modelcontextprotocol/inspector node dist/knowledge-mcp/index.js
 
 1. ✅ **MANDATORY**: Run `pnpm run fix:all` to auto-fix all code issues
 2. ✅ Ensure TypeScript compiles with `pnpm run build`
-3. ✅ Ensure all tests pass with `pnpm run test:interface`
+3. ✅ Ensure all tests pass with `pnpm run test`
 4. ✅ Update TODO status flags if tasks completed
 5. ✅ NO AI/Claude references in code or commits
 6. ✅ Verify all linting passes (auto-fix handles most issues)
@@ -309,7 +310,7 @@ pnpm run lint
 pnpm run format
 
 # Run tests
-pnpm run test:interface
+pnpm run test
 
 # Test with MCP Inspector
 npx @modelcontextprotocol/inspector node dist/knowledge-mcp/index.js
@@ -512,7 +513,7 @@ const data = yaml.load(content); // ✅ js-yaml uses safe loading by default
 
 - **Project Issues**: Report at https://github.com/sven-borkert/knowledge-mcp/issues
 - **Documentation**: Check `docs/technical-specification.md`
-- **Test Results**: Run `pnpm run test:interface`
+- **Test Results**: Run `pnpm run test`
 - **TypeScript Docs**: https://www.typescriptlang.org/docs/
 
 Remember: This project implements security-critical functionality. Always prioritize security over convenience!

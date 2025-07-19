@@ -93,16 +93,40 @@ export const SERVER_CONFIG = {
 - Case sensitive, special characters preserved
 
 🛠️ AVAILABLE TOOLS:
+
+📁 PROJECT MANAGEMENT:
 - get_project_main: Get project instructions (ALWAYS START HERE)
 - update_project_main: Create/update project instructions (for CLAUDE.md migration)
 - update_project_section: Update specific sections in main.md (efficient partial updates)
+- add_project_section: Add new sections to main.md with positioning
 - remove_project_section: Remove sections from main.md completely
+- delete_project: Permanently delete project and all content
+
+📚 KNOWLEDGE MANAGEMENT:
 - search_knowledge: Find information across knowledge docs  
 - create_knowledge_file: Create structured knowledge documents
 - get_knowledge_file: Download complete knowledge documents
 - update_chapter: Update specific sections in knowledge docs
+- add_chapter: Add new chapters to knowledge docs with positioning
 - remove_chapter: Remove chapters from knowledge docs completely
 - delete_knowledge_file: Remove knowledge documents
+
+✅ TODO MANAGEMENT:
+- list_todos: List all TODO lists in a project with completion status
+- create_todo: Create new TODO list with optional initial tasks
+- add_todo_task: Add task to existing TODO list
+- remove_todo_task: Remove task from TODO list
+- complete_todo_task: Mark task as completed
+- get_next_todo_task: Get next incomplete task in sequence
+- get_todo_tasks: Get all tasks with completion status
+- delete_todo: Delete entire TODO list
+
+📋 TODO USAGE PATTERNS:
+- Use create_todo("Implementation plan", ["Task 1", "Task 2"]) to start
+- Use get_next_todo_task to work sequentially through tasks
+- Mark tasks complete with complete_todo_task immediately after finishing
+- Use list_todos to see all active TODO lists and their progress
+- TODO lists are project-scoped and persist across conversations
 
 ❌ WHAT NOT TO UPLOAD TO KNOWLEDGE MCP:
 - README files (repository browsing, not AI context)

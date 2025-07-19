@@ -10,6 +10,7 @@ import {
   realpathSync,
   lstatSync,
   rmSync,
+  readdirSync,
 } from 'fs';
 import {
   access,
@@ -31,6 +32,153 @@ import slugifyLib from 'slugify';
 import { logger } from './config/index.js';
 
 const exec = promisify(execCallback);
+
+// Enhanced file locking mechanism with proper queuing to prevent race conditions
+interface LockQueue {
+  queue: Array<{
+    operation: () => Promise<any>;
+    resolve: (value: any) => void;
+    reject: (error: any) => void;
+  }>;
+  processing: boolean;
+}
+
+const fileLocks = new Map<string, LockQueue>();
+
+// Global index lock for critical index.json operations
+const INDEX_LOCK_KEY = '__global_index_lock__';
+
+/**
+ * Acquire global index lock for index.json operations
+ * This ensures index.json operations are fully serialized across all projects
+ */
+export async function acquireIndexLock<T>(
+  storagePath: string,
+  operation: () => Promise<T>
+): Promise<T> {
+  const indexFile = join(storagePath, 'index.json');
+  
+  // Use both the specific file lock and a global index operation lock
+  return acquireFileLock(INDEX_LOCK_KEY, async () => {
+    return acquireFileLock(indexFile, operation);
+  });
+}
+
+/**
+ * Add a small random delay to reduce contention in high-concurrency scenarios
+ */
+export async function addConcurrencyDelay(): Promise<void> {
+  // Random delay between 1-10ms to stagger concurrent operations
+  const delay = Math.floor(Math.random() * 10) + 1;
+  await new Promise(resolve => setTimeout(resolve, delay));
+}
+
+/**
+ * Acquire a lock for a file path to prevent concurrent operations
+ * Uses a queue-based approach to ensure proper serialization
+ */
+export async function acquireFileLock<T>(
+  filePath: string,
+  operation: () => Promise<T>
+): Promise<T> {
+  // Normalize file path to ensure consistent locking keys
+  const normalizedPath = resolve(filePath);
+  
+  return new Promise<T>((resolve, reject) => {
+    // Get or create lock queue for this file
+    let lockQueue = fileLocks.get(normalizedPath);
+    if (!lockQueue) {
+      lockQueue = { queue: [], processing: false };
+      fileLocks.set(normalizedPath, lockQueue);
+    }
+
+    // Add operation to queue
+    lockQueue.queue.push({
+      operation,
+      resolve,
+      reject,
+    });
+
+    // Process queue if not already processing
+    if (!lockQueue.processing) {
+      processLockQueue(normalizedPath);
+    }
+  });
+}
+
+/**
+ * Process the lock queue for a specific file path
+ * Ensures operations are executed sequentially
+ */
+async function processLockQueue(filePath: string): Promise<void> {
+  const lockQueue = fileLocks.get(filePath);
+  if (!lockQueue || lockQueue.processing) {
+    return;
+  }
+
+  lockQueue.processing = true;
+
+  try {
+    while (lockQueue.queue.length > 0) {
+      const { operation, resolve, reject } = lockQueue.queue.shift()!;
+      
+      try {
+        const result = await operation();
+        resolve(result);
+      } catch (error) {
+        reject(error);
+      }
+    }
+  } finally {
+    lockQueue.processing = false;
+    
+    // Clean up empty lock queues
+    if (lockQueue.queue.length === 0) {
+      fileLocks.delete(filePath);
+    }
+  }
+}
+
+/**
+ * Synchronous version of file lock using a simple retry mechanism
+ */
+export function acquireFileLockSync<T>(filePath: string, operation: () => T): T {
+  // For sync operations, we'll use a simple retry with exponential backoff
+  let attempts = 0;
+  const maxAttempts = 10;
+  const baseDelay = 10; // 10ms base delay
+
+  while (attempts < maxAttempts) {
+    try {
+      // Check if there's an async lock in progress
+      const existingLock = fileLocks.get(filePath);
+      if (!existingLock) {
+        // No async operation in progress, proceed
+        return operation();
+      }
+
+      // Wait and retry
+      attempts++;
+      const delay = baseDelay * Math.pow(2, attempts - 1); // Exponential backoff
+      const end = Date.now() + delay;
+      while (Date.now() < end) {
+        // Busy wait for small delays
+      }
+    } catch (error) {
+      if (attempts === maxAttempts - 1) {
+        throw error; // Re-throw on final attempt
+      }
+      attempts++;
+      const delay = baseDelay * Math.pow(2, attempts - 1);
+      const end = Date.now() + delay;
+      while (Date.now() < end) {
+        // Busy wait for small delays
+      }
+    }
+  }
+
+  throw new Error(`Failed to acquire file lock for ${filePath} after ${maxAttempts} attempts`);
+}
 
 export interface ProjectIndex {
   projects: Record<string, string>;
@@ -506,24 +654,42 @@ export function readProjectIndex(storagePath: string): Record<string, string> {
 export function writeProjectIndex(storagePath: string, index: Record<string, string>): void {
   const indexFile = join(storagePath, 'index.json');
 
-  try {
-    // Write to temporary file first
-    const tempFile = `${indexFile}.tmp`;
-    writeFileSync(tempFile, JSON.stringify({ projects: index }, null, 2));
+  return acquireFileLockSync(indexFile, () => {
+    try {
+      // Write to temporary file first with unique name to avoid conflicts
+      const tempFile = `${indexFile}.tmp.${Date.now()}.${Math.random().toString(36).substr(2, 9)}`;
+      writeFileSync(tempFile, JSON.stringify({ projects: index }, null, 2));
 
-    // Atomic rename
-    renameSync(tempFile, indexFile);
+      // Atomic rename
+      renameSync(tempFile, indexFile);
 
-    // Commit the index change
-    autoCommit(storagePath, 'Update project index');
-  } catch (error) {
-    // Clean up temp file if it exists
-    const tempFile = `${indexFile}.tmp`;
-    if (existsSync(tempFile)) {
-      unlinkSync(tempFile);
+      // Commit the index change
+      autoCommit(storagePath, 'Update project index');
+    } catch (error) {
+      // Clean up temp file if it exists (use a pattern to clean any temp files)
+      const dir = dirname(indexFile);
+      const indexName = 'index.json';
+
+      try {
+        const files = readdirSync(dir);
+        files
+          .filter((f) => f.startsWith(`${indexName}.tmp.`))
+          .forEach((f) => {
+            try {
+              unlinkSync(join(dir, f));
+            } catch {
+              // Ignore cleanup errors
+            }
+          });
+      } catch {
+        // Ignore cleanup errors
+      }
+
+      throw new Error(
+        `Failed to write project index: ${error instanceof Error ? error.message : String(error)}`
+      );
     }
-    throw error;
-  }
+  });
 }
 
 /**
@@ -531,7 +697,10 @@ export function writeProjectIndex(storagePath: string, index: Record<string, str
  * Returns tuple of [original_project_id, project_directory_path]
  * This version does NOT create entries for non-existent projects.
  */
-export function getProjectDirectory(storagePath: string, projectId: string): [string, string] | null {
+export function getProjectDirectory(
+  storagePath: string,
+  projectId: string
+): [string, string] | null {
   const index = readProjectIndex(storagePath);
 
   // Check if project_id is already in index
@@ -1028,18 +1197,18 @@ export async function readProjectIndexAsync(storagePath: string): Promise<Record
 }
 
 /**
- * Async version of writeProjectIndex.
- * Write the project index mapping.
+ * Internal function to write project index without acquiring index lock
+ * Used when index lock is already acquired by the caller
  */
-export async function writeProjectIndexAsync(
+async function writeProjectIndexInternal(
   storagePath: string,
   index: Record<string, string>
 ): Promise<void> {
   const indexFile = join(storagePath, 'index.json');
-
+  
   try {
-    // Write to temporary file first
-    const tempFile = `${indexFile}.tmp`;
+    // Write to temporary file first with unique name to avoid conflicts
+    const tempFile = `${indexFile}.tmp.${Date.now()}.${Math.random().toString(36).substr(2, 9)}`;
     await writeFile(tempFile, JSON.stringify({ projects: index }, null, 2));
 
     // Atomic rename
@@ -1048,17 +1217,43 @@ export async function writeProjectIndexAsync(
     // Commit the index change
     await autoCommitAsync(storagePath, 'Update project index');
   } catch (error) {
-    // Clean up temp file on error
-    const tempFile = `${indexFile}.tmp`;
+    // Clean up temp files on error (use a pattern to clean any temp files)
+    const dir = dirname(indexFile);
+    const indexName = 'index.json';
+
     try {
-      await unlink(tempFile);
+      const { readdir } = await import('fs/promises');
+      const files = await readdir(dir);
+      await Promise.all(
+        files
+          .filter((f) => f.startsWith(`${indexName}.tmp.`))
+          .map(async (f) => {
+            try {
+              await unlink(join(dir, f));
+            } catch {
+              // Ignore cleanup errors
+            }
+          })
+      );
     } catch {
       // Ignore cleanup errors
     }
-    throw new Error(
-      `Failed to write project index: ${error instanceof Error ? error.message : String(error)}`
-    );
+
+    throw error;
   }
+}
+
+/**
+ * Async version of writeProjectIndex.
+ * Write the project index mapping.
+ */
+export async function writeProjectIndexAsync(
+  storagePath: string,
+  index: Record<string, string>
+): Promise<void> {
+  return acquireIndexLock(storagePath, async () => {
+    await writeProjectIndexInternal(storagePath, index);
+  });
 }
 
 /**
@@ -1090,34 +1285,36 @@ export async function createProjectEntryAsync(
   storagePath: string,
   projectId: string
 ): Promise<[string, string]> {
-  // Read current index
-  const index = await readProjectIndexAsync(storagePath);
+  return acquireIndexLock(storagePath, async () => {
+    // Read current index
+    const index = await readProjectIndexAsync(storagePath);
 
-  // Check if we already have a directory for this project
-  if (index[projectId]) {
-    const projectPath = join(storagePath, 'projects', index[projectId]);
+    // Check if we already have a directory for this project
+    if (index[projectId]) {
+      const projectPath = join(storagePath, 'projects', index[projectId]);
+      return [projectId, projectPath];
+    }
+
+    // Create a new slugified directory name
+    const slugifiedName = slugify(projectId);
+    let dirName = slugifiedName;
+    let counter = 1;
+
+    // Handle collisions
+    while (Object.values(index).includes(dirName)) {
+      dirName = `${slugifiedName}-${counter}`;
+      counter++;
+    }
+
+    // Update index
+    index[projectId] = dirName;
+    await writeProjectIndexInternal(storagePath, index);
+
+    // Note: We don't create the directory here - let the caller do that
+    const projectPath = join(storagePath, 'projects', dirName);
+
     return [projectId, projectPath];
-  }
-
-  // Create a new slugified directory name
-  const slugifiedName = slugify(projectId);
-  let dirName = slugifiedName;
-  let counter = 1;
-
-  // Handle collisions
-  while (Object.values(index).includes(dirName)) {
-    dirName = `${slugifiedName}-${counter}`;
-    counter++;
-  }
-
-  // Update index
-  index[projectId] = dirName;
-  await writeProjectIndexAsync(storagePath, index);
-
-  // Note: We don't create the directory here - let the caller do that
-  const projectPath = join(storagePath, 'projects', dirName);
-
-  return [projectId, projectPath];
+  });
 }
 
 /**

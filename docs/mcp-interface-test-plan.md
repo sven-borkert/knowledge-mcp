@@ -250,11 +250,11 @@ This language-agnostic test plan validates all MCP tools and resources through t
 
 ### TypeScript Test Runner
 
-The TypeScript implementation includes an automated test runner at `test/interface-test.ts` that executes all these tests:
+The TypeScript implementation includes an automated test runner at `test/run-all-tests.ts` that executes all these tests through modular test suites in `test/suites/`:
 
 ```bash
 pnpm run build
-pnpm run test:interface
+pnpm run test
 ```
 
 ### Python Test Execution
