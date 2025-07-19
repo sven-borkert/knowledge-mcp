@@ -11,6 +11,7 @@ import {
   assertFailure,
   assertEqual,
   assertContains,
+  assertNotContains,
   assertArrayLength,
   setupTestEnvironment,
   cleanupTestEnvironment,
@@ -175,6 +176,32 @@ async function main(): Promise<void> {
       });
 
       assertSuccess(result);
+    });
+
+    await runner.runTest('create_knowledge_file: Filename with .md extension', async () => {
+      const projectId = generateTestProjectId('md-extension');
+      const result = await client.callToolAndParse('create_knowledge_file', {
+        project_id: projectId,
+        filename: 'code-quality-assessment.md',
+        title: 'Code Quality Assessment',
+        introduction: 'Testing that .md extension is preserved correctly',
+        keywords: ['test', 'extension'],
+        chapters: [
+          {
+            title: 'Overview',
+            content: 'This tests that filenames with .md extension do not get duplicated.',
+          },
+        ],
+      });
+
+      assertSuccess(result);
+      // Verify the filename doesn't have double .md extension
+      const filepath = result.filepath ?? result.document_id;
+      if (filepath) {
+        assertContains(filepath as string, 'code-quality-assessment.md');
+        // Ensure no double extension
+        assertNotContains(filepath as string, '.md.md');
+      }
     });
 
     // Test get_knowledge_file

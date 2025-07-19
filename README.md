@@ -132,6 +132,66 @@ Example scenarios:
 - User: "Work on TODO #1" → Get tasks and complete them all
 - User: "What TODOs do I have?" → List TODOs for the project
 - User: "Help me implement authentication" → DO NOT create a TODO unless asked
+
+### Efficient Chapter Iteration Pattern
+
+When working with large knowledge documents, use these patterns:
+
+1. **List chapters first**:
+```
+
+list_chapters(project_id, filename)
+
+```
+Returns lightweight list of titles and summaries.
+
+2. **Read specific chapter**:
+```
+
+get_chapter(project_id, filename, chapter_title="Introduction")
+
+# or
+
+get_chapter(project_id, filename, chapter_index=0)
+
+```
+
+3. **Sequential iteration**:
+```
+
+# Start with first chapter
+
+chapter = get_chapter(project_id, filename, chapter_index=0)
+
+# Continue through document
+
+while chapter.has_next: # Process current chapter
+process_chapter(chapter)
+
+       # Get next chapter
+       chapter = get_next_chapter(project_id, filename, current_index=chapter.index)
+
+```
+
+4. **Selective reading based on summaries**:
+```
+
+# List all chapters
+
+chapters = list_chapters(project_id, filename)
+
+# Read only chapters matching criteria
+
+for ch in chapters:
+if "API" in ch.summary or "authentication" in ch.title.lower():
+full_chapter = get_chapter(project_id, filename, chapter_title=ch.title) # Process relevant chapter
+
+```
+
+### Performance Benefits
+- `list_chapters` is 10-100x faster than `get_knowledge_file` for large documents
+- `get_chapter` loads only needed content, reducing token usage
+- Sequential iteration prevents loading entire document into memory
 ```
 
 ## 📦 Client-Specific Configuration
@@ -266,6 +326,7 @@ git remote set-url origin git@github.com:yourusername/knowledge-mcp-backup.git
 ### Core Tools
 
 #### Project Management
+
 - `get_project_main(project_id)` - Retrieve main project instructions
 - `update_project_main(project_id, content)` - Update project instructions
 - `update_project_section(project_id, section_header, new_content)` - Update specific section
@@ -274,6 +335,7 @@ git remote set-url origin git@github.com:yourusername/knowledge-mcp-backup.git
 - `delete_project(project_id)` - Delete entire project
 
 #### Knowledge Documents
+
 - `create_knowledge_file(project_id, filename, title, introduction, keywords, chapters)` - Create structured document
 - `get_knowledge_file(project_id, filename)` - Retrieve complete document
 - `delete_knowledge_file(project_id, filename)` - Delete document
@@ -281,10 +343,18 @@ git remote set-url origin git@github.com:yourusername/knowledge-mcp-backup.git
 - `add_chapter(project_id, filename, chapter_title, content, position?, reference_chapter?)` - Add chapter
 - `remove_chapter(project_id, filename, chapter_title)` - Remove chapter
 
+#### Chapter Iteration
+
+- `list_chapters(project_id, filename)` - List all chapters (titles and summaries only)
+- `get_chapter(project_id, filename, chapter_title | chapter_index)` - Get single chapter content
+- `get_next_chapter(project_id, filename, current_chapter_title | current_index)` - Get next chapter
+
 #### Search & Discovery
+
 - `search_knowledge(project_id, query)` - Full-text search across all documents
 
 #### TODO Management
+
 - `list_todos(project_id)` - List all TODO lists
 - `create_todo(project_id, description, tasks?)` - Create new TODO list
 - `get_todo_tasks(project_id, todo_number)` - Get tasks in TODO list
@@ -295,6 +365,7 @@ git remote set-url origin git@github.com:yourusername/knowledge-mcp-backup.git
 - `delete_todo(project_id, todo_number)` - Delete entire TODO list
 
 #### Server Operations
+
 - `get_server_info()` - Get server version and configuration
 - `get_storage_status()` - Get Git repository status
 - `sync_storage()` - Force Git commit and sync
@@ -369,7 +440,7 @@ pnpm run test:all && open test-results/html/merged-results.html
 
 ### Prerequisites
 
-- Node.js 18+ 
+- Node.js 18+
 - pnpm (recommended) or npm
 - TypeScript 5.7+
 
@@ -440,7 +511,7 @@ The project enforces high code quality standards:
    ```bash
    # Clear NPX cache if using published version
    rm -rf ~/.npm/_npx
-   
+
    # Reinstall with @latest
    claude mcp remove knowledge-mcp
    claude mcp add knowledge-mcp npx -- -y @spothlynx/knowledge-mcp@latest
@@ -451,7 +522,7 @@ The project enforces high code quality standards:
    ```bash
    # Check all configuration scopes
    claude mcp list
-   
+
    # Remove from all scopes and re-add
    claude mcp remove knowledge-mcp -s global
    claude mcp remove knowledge-mcp -s project

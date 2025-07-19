@@ -36,9 +36,9 @@ const exec = promisify(execCallback);
 // Enhanced file locking mechanism with proper queuing to prevent race conditions
 interface LockQueue {
   queue: Array<{
-    operation: () => Promise<any>;
-    resolve: (value: any) => void;
-    reject: (error: any) => void;
+    operation: () => Promise<unknown>;
+    resolve: (value: unknown) => void;
+    reject: (error: unknown) => void;
   }>;
   processing: boolean;
 }
@@ -57,7 +57,7 @@ export async function acquireIndexLock<T>(
   operation: () => Promise<T>
 ): Promise<T> {
   const indexFile = join(storagePath, 'index.json');
-  
+
   // Use both the specific file lock and a global index operation lock
   return acquireFileLock(INDEX_LOCK_KEY, async () => {
     return acquireFileLock(indexFile, operation);
@@ -70,7 +70,7 @@ export async function acquireIndexLock<T>(
 export async function addConcurrencyDelay(): Promise<void> {
   // Random delay between 1-10ms to stagger concurrent operations
   const delay = Math.floor(Math.random() * 10) + 1;
-  await new Promise(resolve => setTimeout(resolve, delay));
+  await new Promise((resolve) => setTimeout(resolve, delay));
 }
 
 /**
@@ -83,7 +83,7 @@ export async function acquireFileLock<T>(
 ): Promise<T> {
   // Normalize file path to ensure consistent locking keys
   const normalizedPath = resolve(filePath);
-  
+
   return new Promise<T>((resolve, reject) => {
     // Get or create lock queue for this file
     let lockQueue = fileLocks.get(normalizedPath);
@@ -94,14 +94,14 @@ export async function acquireFileLock<T>(
 
     // Add operation to queue
     lockQueue.queue.push({
-      operation,
-      resolve,
-      reject,
+      operation: operation as () => Promise<unknown>,
+      resolve: resolve as (value: unknown) => void,
+      reject: reject as (error: unknown) => void,
     });
 
     // Process queue if not already processing
     if (!lockQueue.processing) {
-      processLockQueue(normalizedPath);
+      void processLockQueue(normalizedPath);
     }
   });
 }
@@ -120,8 +120,11 @@ async function processLockQueue(filePath: string): Promise<void> {
 
   try {
     while (lockQueue.queue.length > 0) {
-      const { operation, resolve, reject } = lockQueue.queue.shift()!;
-      
+      const item = lockQueue.queue.shift();
+      if (!item) continue;
+
+      const { operation, resolve, reject } = item;
+
       try {
         const result = await operation();
         resolve(result);
@@ -131,7 +134,7 @@ async function processLockQueue(filePath: string): Promise<void> {
     }
   } finally {
     lockQueue.processing = false;
-    
+
     // Clean up empty lock queues
     if (lockQueue.queue.length === 0) {
       fileLocks.delete(filePath);
@@ -425,6 +428,14 @@ export function slugify(text: string): string {
     return 'untitled';
   }
 
+  // Extract file extension if present
+  let extension = '';
+  const lastDotIndex = processed.lastIndexOf('.');
+  if (lastDotIndex > 0 && lastDotIndex < processed.length - 1) {
+    extension = processed.slice(lastDotIndex);
+    processed = processed.slice(0, lastDotIndex);
+  }
+
   // Use slugify library with custom options
   const slugified = slugifyLib(processed, {
     lower: true,
@@ -432,7 +443,9 @@ export function slugify(text: string): string {
     replacement: '-',
   });
 
-  return slugified || 'untitled';
+  // Reattach extension if it was present
+  const result = extension ? `${slugified}${extension}` : slugified;
+  return result || 'untitled';
 }
 
 /**
@@ -1205,7 +1218,7 @@ async function writeProjectIndexInternal(
   index: Record<string, string>
 ): Promise<void> {
   const indexFile = join(storagePath, 'index.json');
-  
+
   try {
     // Write to temporary file first with unique name to avoid conflicts
     const tempFile = `${indexFile}.tmp.${Date.now()}.${Math.random().toString(36).substr(2, 9)}`;

@@ -518,6 +518,199 @@ Special chars: <>&"' üñíçødé 你好
 
       assertFailure(result);
     });
+
+    // Tests for new chapter iteration tools
+    await runner.runTest('list_chapters: List all chapters', async () => {
+      const projectId = generateTestProjectId('list-chapters');
+      await createTestDocument(client, projectId);
+
+      const result = await client.callToolAndParse('list_chapters', {
+        project_id: projectId,
+        filename: 'test-doc.md',
+      });
+
+      assertSuccess(result);
+      assertEqual(result.total_chapters, 3);
+      assertArrayLength(result.chapters as any[], 3);
+
+      const chapters = result.chapters as any[];
+      assertEqual(chapters[0].title, 'Chapter 1');
+      assertEqual(chapters[0].index, 0);
+      assertEqual(chapters[1].title, 'Chapter 2');
+      assertEqual(chapters[1].index, 1);
+      assertEqual(chapters[2].title, 'Chapter 3');
+      assertEqual(chapters[2].index, 2);
+    });
+
+    await runner.runTest('list_chapters: Empty document', async () => {
+      const projectId = generateTestProjectId('list-empty');
+      await client.callToolAndParse('create_knowledge_file', {
+        project_id: projectId,
+        filename: 'empty.md',
+        title: 'Empty Document',
+        introduction: 'No chapters',
+        keywords: ['empty'],
+        chapters: [],
+      });
+
+      const result = await client.callToolAndParse('list_chapters', {
+        project_id: projectId,
+        filename: 'empty.md',
+      });
+
+      assertSuccess(result);
+      assertEqual(result.total_chapters, 0);
+      assertArrayLength(result.chapters as any[], 0);
+    });
+
+    await runner.runTest('get_chapter: Get by title', async () => {
+      const projectId = generateTestProjectId('get-by-title');
+      await createTestDocument(client, projectId);
+
+      const result = await client.callToolAndParse('get_chapter', {
+        project_id: projectId,
+        filename: 'test-doc.md',
+        chapter_title: 'Chapter 2',
+      });
+
+      assertSuccess(result);
+      assertEqual(result.title, 'Chapter 2');
+      assertContains(result.content as string, 'Content 2');
+      assertEqual(result.index, 1);
+      assertEqual(result.total_chapters, 3);
+      assertEqual(result.has_next, true);
+      assertEqual(result.has_previous, true);
+    });
+
+    await runner.runTest('get_chapter: Get by index', async () => {
+      const projectId = generateTestProjectId('get-by-index');
+      await createTestDocument(client, projectId);
+
+      const result = await client.callToolAndParse('get_chapter', {
+        project_id: projectId,
+        filename: 'test-doc.md',
+        chapter_index: 0,
+      });
+
+      assertSuccess(result);
+      assertEqual(result.title, 'Chapter 1');
+      assertContains(result.content as string, 'Content 1');
+      assertEqual(result.index, 0);
+      assertEqual(result.total_chapters, 3);
+      assertEqual(result.has_next, true);
+      assertEqual(result.has_previous, false);
+    });
+
+    await runner.runTest('get_chapter: Non-existent title', async () => {
+      const projectId = generateTestProjectId('get-nonexistent');
+      await createTestDocument(client, projectId);
+
+      const result = await client.callToolAndParse('get_chapter', {
+        project_id: projectId,
+        filename: 'test-doc.md',
+        chapter_title: 'Non-existent Chapter',
+      });
+
+      assertFailure(result);
+      assertContains(result.error as string, 'not found');
+    });
+
+    await runner.runTest('get_chapter: Invalid index', async () => {
+      const projectId = generateTestProjectId('get-invalid-index');
+      await createTestDocument(client, projectId);
+
+      const result = await client.callToolAndParse('get_chapter', {
+        project_id: projectId,
+        filename: 'test-doc.md',
+        chapter_index: 10,
+      });
+
+      assertFailure(result);
+      assertContains(result.error as string, 'out of range');
+    });
+
+    await runner.runTest('get_next_chapter: By title', async () => {
+      const projectId = generateTestProjectId('next-by-title');
+      await createTestDocument(client, projectId);
+
+      const result = await client.callToolAndParse('get_next_chapter', {
+        project_id: projectId,
+        filename: 'test-doc.md',
+        current_chapter_title: 'Chapter 1',
+      });
+
+      assertSuccess(result);
+      assertEqual(result.title, 'Chapter 2');
+      assertContains(result.content as string, 'Content 2');
+      assertEqual(result.index, 1);
+      assertEqual(result.has_next, true);
+    });
+
+    await runner.runTest('get_next_chapter: By index', async () => {
+      const projectId = generateTestProjectId('next-by-index');
+      await createTestDocument(client, projectId);
+
+      const result = await client.callToolAndParse('get_next_chapter', {
+        project_id: projectId,
+        filename: 'test-doc.md',
+        current_index: 1,
+      });
+
+      assertSuccess(result);
+      assertEqual(result.title, 'Chapter 3');
+      assertContains(result.content as string, 'Content 3');
+      assertEqual(result.index, 2);
+      assertEqual(result.has_next, false);
+    });
+
+    await runner.runTest('get_next_chapter: Last chapter', async () => {
+      const projectId = generateTestProjectId('next-last');
+      await createTestDocument(client, projectId);
+
+      const result = await client.callToolAndParse('get_next_chapter', {
+        project_id: projectId,
+        filename: 'test-doc.md',
+        current_chapter_title: 'Chapter 3',
+      });
+
+      assertSuccess(result);
+      assertEqual(result.has_next, false);
+      assertContains(result.message as string, 'No more chapters');
+    });
+
+    await runner.runTest('get_next_chapter: Sequential iteration', async () => {
+      const projectId = generateTestProjectId('sequential');
+      await createTestDocument(client, projectId);
+
+      // Start with first chapter
+      let chapter = await client.callToolAndParse('get_chapter', {
+        project_id: projectId,
+        filename: 'test-doc.md',
+        chapter_index: 0,
+      });
+
+      assertSuccess(chapter);
+      const titles: string[] = [chapter.title as string];
+
+      // Iterate through remaining chapters
+      while (chapter.has_next) {
+        chapter = await client.callToolAndParse('get_next_chapter', {
+          project_id: projectId,
+          filename: 'test-doc.md',
+          current_index: chapter.index as number,
+        });
+
+        if (chapter.has_next !== false || chapter.title) {
+          titles.push(chapter.title as string);
+        }
+      }
+
+      // Should have collected all 3 chapters
+      assertArrayLength(titles, 3);
+      assertEqual(titles[0], 'Chapter 1');
+      assertEqual(titles[1], 'Chapter 2');
+      assertEqual(titles[2], 'Chapter 3');
+    });
   } finally {
     await client.disconnect();
     cleanupTestEnvironment(TEST_STORAGE_PATH);

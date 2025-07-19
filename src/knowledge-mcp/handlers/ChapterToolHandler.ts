@@ -816,4 +816,311 @@ export class ChapterToolHandler extends BaseHandler {
       return this.formatErrorResponse(mcpError, context);
     }
   }
+
+  /**
+   * List all chapters in a knowledge document (lightweight - titles and summaries only)
+   */
+  async listChaptersAsync(params: { project_id: string; filename: string }): Promise<string> {
+    const context = this.createContext('list_chapters', params);
+
+    try {
+      const { project_id, filename } = params;
+      const projectInfo = await getProjectDirectoryAsync(this.storagePath, project_id);
+
+      if (!projectInfo) {
+        throw new MCPError(MCPErrorCode.PROJECT_NOT_FOUND, `Project ${project_id} not found`, {
+          project_id,
+          traceId: context.traceId,
+        });
+      }
+
+      const [, projectPath] = projectInfo;
+      const knowledgePath = join(projectPath, 'knowledge');
+      const filePath = await validatePathAsync(knowledgePath, filename);
+
+      // Check if file exists
+      try {
+        await access(filePath);
+      } catch {
+        throw new MCPError(
+          MCPErrorCode.DOCUMENT_NOT_FOUND,
+          `Knowledge file ${filename} not found`,
+          { project_id, filename, traceId: context.traceId }
+        );
+      }
+
+      // Read and parse the document
+      const content = await readFile(filePath, 'utf8');
+      const [, body] = parseDocument(content);
+      const chapters = parseChapters(body);
+
+      // Return lightweight chapter list
+      const chapterList = chapters.map((chapter, index) => ({
+        title: chapter.title,
+        summary: chapter.summary,
+        index,
+      }));
+
+      return this.formatSuccessResponse({
+        project_id,
+        filename,
+        total_chapters: chapters.length,
+        chapters: chapterList,
+      });
+    } catch (error) {
+      const mcpError =
+        error instanceof MCPError
+          ? error
+          : new MCPError(
+              MCPErrorCode.FILE_SYSTEM_ERROR,
+              `Failed to list chapters: ${error instanceof Error ? error.message : String(error)}`,
+              {
+                project_id: params.project_id,
+                filename: params.filename,
+                traceId: context.traceId,
+              }
+            );
+      this.logError('list_chapters', params, mcpError, context);
+      return this.formatErrorResponse(mcpError, context);
+    }
+  }
+
+  /**
+   * Get a single chapter by title or index
+   */
+  async getChapterAsync(
+    params: {
+      project_id: string;
+      filename: string;
+    } & (
+      | { chapter_title: string; chapter_index?: never }
+      | { chapter_index: number; chapter_title?: never }
+    )
+  ): Promise<string> {
+    const context = this.createContext('get_chapter', params);
+
+    try {
+      const { project_id, filename, chapter_title, chapter_index } = params;
+      const projectInfo = await getProjectDirectoryAsync(this.storagePath, project_id);
+
+      if (!projectInfo) {
+        throw new MCPError(MCPErrorCode.PROJECT_NOT_FOUND, `Project ${project_id} not found`, {
+          project_id,
+          traceId: context.traceId,
+        });
+      }
+
+      const [, projectPath] = projectInfo;
+      const knowledgePath = join(projectPath, 'knowledge');
+      const filePath = await validatePathAsync(knowledgePath, filename);
+
+      // Check if file exists
+      try {
+        await access(filePath);
+      } catch {
+        throw new MCPError(
+          MCPErrorCode.DOCUMENT_NOT_FOUND,
+          `Knowledge file ${filename} not found`,
+          { project_id, filename, traceId: context.traceId }
+        );
+      }
+
+      // Read and parse the document
+      const content = await readFile(filePath, 'utf8');
+      const [, body] = parseDocument(content);
+      const chapters = parseChapters(body);
+
+      // Find the requested chapter
+      let targetChapter: Chapter | undefined;
+      let targetIndex: number;
+
+      if (chapter_title !== undefined) {
+        // Find by title
+        targetIndex = chapters.findIndex((ch) => ch.title === chapter_title);
+        if (targetIndex === -1) {
+          throw new MCPError(
+            MCPErrorCode.CHAPTER_NOT_FOUND,
+            `Chapter "${chapter_title}" not found in ${filename}`,
+            { project_id, filename, chapter_title, traceId: context.traceId }
+          );
+        }
+        targetChapter = chapters[targetIndex];
+      } else if (chapter_index !== undefined) {
+        // Find by index
+        if (chapter_index < 0 || chapter_index >= chapters.length) {
+          throw new MCPError(
+            MCPErrorCode.INVALID_INPUT,
+            `Chapter index ${chapter_index} out of range (0-${chapters.length - 1})`,
+            {
+              project_id,
+              filename,
+              chapter_index,
+              total_chapters: chapters.length,
+              traceId: context.traceId,
+            }
+          );
+        }
+        targetIndex = chapter_index;
+        targetChapter = chapters[targetIndex];
+      } else {
+        throw new MCPError(
+          MCPErrorCode.INVALID_INPUT,
+          'Must specify either chapter_title or chapter_index',
+          { project_id, filename, traceId: context.traceId }
+        );
+      }
+
+      return this.formatSuccessResponse({
+        project_id,
+        filename,
+        title: targetChapter.title,
+        content: targetChapter.content,
+        summary: targetChapter.summary,
+        index: targetIndex,
+        total_chapters: chapters.length,
+        has_next: targetIndex < chapters.length - 1,
+        has_previous: targetIndex > 0,
+      });
+    } catch (error) {
+      const mcpError =
+        error instanceof MCPError
+          ? error
+          : new MCPError(
+              MCPErrorCode.FILE_SYSTEM_ERROR,
+              `Failed to get chapter: ${error instanceof Error ? error.message : String(error)}`,
+              {
+                project_id: params.project_id,
+                filename: params.filename,
+                traceId: context.traceId,
+              }
+            );
+      this.logError('get_chapter', params, mcpError, context);
+      return this.formatErrorResponse(mcpError, context);
+    }
+  }
+
+  /**
+   * Get the next chapter after the current one
+   */
+  async getNextChapterAsync(
+    params: {
+      project_id: string;
+      filename: string;
+    } & (
+      | { current_chapter_title: string; current_index?: never }
+      | { current_index: number; current_chapter_title?: never }
+    )
+  ): Promise<string> {
+    const context = this.createContext('get_next_chapter', params);
+
+    try {
+      const { project_id, filename, current_chapter_title, current_index } = params;
+      const projectInfo = await getProjectDirectoryAsync(this.storagePath, project_id);
+
+      if (!projectInfo) {
+        throw new MCPError(MCPErrorCode.PROJECT_NOT_FOUND, `Project ${project_id} not found`, {
+          project_id,
+          traceId: context.traceId,
+        });
+      }
+
+      const [, projectPath] = projectInfo;
+      const knowledgePath = join(projectPath, 'knowledge');
+      const filePath = await validatePathAsync(knowledgePath, filename);
+
+      // Check if file exists
+      try {
+        await access(filePath);
+      } catch {
+        throw new MCPError(
+          MCPErrorCode.DOCUMENT_NOT_FOUND,
+          `Knowledge file ${filename} not found`,
+          { project_id, filename, traceId: context.traceId }
+        );
+      }
+
+      // Read and parse the document
+      const content = await readFile(filePath, 'utf8');
+      const [, body] = parseDocument(content);
+      const chapters = parseChapters(body);
+
+      // Find current chapter index
+      let currentIdx: number;
+
+      if (current_chapter_title !== undefined) {
+        // Find by title
+        currentIdx = chapters.findIndex((ch) => ch.title === current_chapter_title);
+        if (currentIdx === -1) {
+          throw new MCPError(
+            MCPErrorCode.CHAPTER_NOT_FOUND,
+            `Current chapter "${current_chapter_title}" not found in ${filename}`,
+            { project_id, filename, current_chapter_title, traceId: context.traceId }
+          );
+        }
+      } else if (current_index !== undefined) {
+        // Use provided index
+        if (current_index < 0 || current_index >= chapters.length) {
+          throw new MCPError(
+            MCPErrorCode.INVALID_INPUT,
+            `Current chapter index ${current_index} out of range (0-${chapters.length - 1})`,
+            {
+              project_id,
+              filename,
+              current_index,
+              total_chapters: chapters.length,
+              traceId: context.traceId,
+            }
+          );
+        }
+        currentIdx = current_index;
+      } else {
+        throw new MCPError(
+          MCPErrorCode.INVALID_INPUT,
+          'Must specify either current_chapter_title or current_index',
+          { project_id, filename, traceId: context.traceId }
+        );
+      }
+
+      // Check if there's a next chapter
+      const nextIdx = currentIdx + 1;
+      if (nextIdx >= chapters.length) {
+        return this.formatSuccessResponse({
+          project_id,
+          filename,
+          has_next: false,
+          message: 'No more chapters after the current one',
+          current_index: currentIdx,
+          total_chapters: chapters.length,
+        });
+      }
+
+      const nextChapter = chapters[nextIdx];
+      return this.formatSuccessResponse({
+        project_id,
+        filename,
+        title: nextChapter.title,
+        content: nextChapter.content,
+        summary: nextChapter.summary,
+        index: nextIdx,
+        total_chapters: chapters.length,
+        has_next: nextIdx < chapters.length - 1,
+        has_previous: true,
+      });
+    } catch (error) {
+      const mcpError =
+        error instanceof MCPError
+          ? error
+          : new MCPError(
+              MCPErrorCode.FILE_SYSTEM_ERROR,
+              `Failed to get next chapter: ${error instanceof Error ? error.message : String(error)}`,
+              {
+                project_id: params.project_id,
+                filename: params.filename,
+                traceId: context.traceId,
+              }
+            );
+      this.logError('get_next_chapter', params, mcpError, context);
+      return this.formatErrorResponse(mcpError, context);
+    }
+  }
 }

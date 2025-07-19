@@ -135,3 +135,22 @@ export const referenceHeaderSchema = z
   .regex(/^##\s+/, 'Reference header must start with "## "')
   .optional()
   .describe('The section header to use as reference point for before/after positioning');
+
+// Chapter index schema for accessing chapters by position
+export const chapterIndexSchema = z
+  .number()
+  .int('Chapter index must be an integer')
+  .min(0, 'Chapter index cannot be negative')
+  .describe('Zero-based index of the chapter in the document');
+
+// Chapter identifier schema - can be either title (string) or index (number)
+export const chapterIdentifierSchema = z
+  .union([
+    z.object({
+      chapter_title: secureChapterTitleSchema,
+    }),
+    z.object({
+      chapter_index: chapterIndexSchema,
+    }),
+  ])
+  .describe('Identify chapter by either title or index');

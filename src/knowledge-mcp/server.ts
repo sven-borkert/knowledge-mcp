@@ -28,6 +28,7 @@ import {
   secureTaskContentSchema,
   sectionPositionSchema,
   referenceHeaderSchema,
+  chapterIndexSchema,
 } from './schemas/validation.js';
 import { initializeStorageAsync } from './utils.js';
 
@@ -444,6 +445,130 @@ Returns: {success: bool, message?: str, error?: str}`,
       position,
       reference_chapter,
     });
+    return {
+      content: [
+        {
+          type: 'text',
+          text: result,
+        },
+      ],
+    };
+  }
+);
+
+// Chapter iteration tools
+server.registerTool(
+  'list_chapters',
+  {
+    title: 'List Chapters',
+    description: `List all chapters in a knowledge document with titles and summaries only.
+This is a lightweight way to see document structure without loading all content.
+Returns: {success: bool, project_id: str, filename: str, total_chapters: int, chapters: array}`,
+    inputSchema: {
+      project_id: secureProjectIdSchema.describe('The project identifier'),
+      filename: secureFilenameSchema.describe('Knowledge file name (must include .md extension)'),
+    },
+  },
+  async ({ project_id, filename }) => {
+    const result = await chapterHandler.listChaptersAsync({ project_id, filename });
+    return {
+      content: [
+        {
+          type: 'text',
+          text: result,
+        },
+      ],
+    };
+  }
+);
+
+server.registerTool(
+  'get_chapter',
+  {
+    title: 'Get Chapter',
+    description: `Retrieve a single chapter's content by title or index.
+Specify either chapter_title OR chapter_index (not both).
+Returns: {success: bool, title: str, content: str, summary: str, index: int, total_chapters: int, has_next: bool, has_previous: bool}`,
+    inputSchema: {
+      project_id: secureProjectIdSchema.describe('The project identifier'),
+      filename: secureFilenameSchema.describe('Knowledge file name (must include .md extension)'),
+      chapter_title: secureChapterTitleSchema
+        .optional()
+        .describe('Title of the chapter to retrieve (use this OR chapter_index)'),
+      chapter_index: chapterIndexSchema
+        .optional()
+        .describe('Zero-based index of the chapter (use this OR chapter_title)'),
+    },
+  },
+  async (params: {
+    project_id: string;
+    filename: string;
+    chapter_title?: string;
+    chapter_index?: number;
+  }) => {
+    // Ensure only one of chapter_title or chapter_index is passed
+    const callParams = params.chapter_title
+      ? {
+          project_id: params.project_id,
+          filename: params.filename,
+          chapter_title: params.chapter_title,
+        }
+      : {
+          project_id: params.project_id,
+          filename: params.filename,
+          chapter_index: params.chapter_index ?? 0,
+        };
+
+    const result = await chapterHandler.getChapterAsync(callParams);
+    return {
+      content: [
+        {
+          type: 'text',
+          text: result,
+        },
+      ],
+    };
+  }
+);
+
+server.registerTool(
+  'get_next_chapter',
+  {
+    title: 'Get Next Chapter',
+    description: `Get the next chapter after the current one.
+Specify either current_chapter_title OR current_index (not both).
+Returns: {success: bool, title?: str, content?: str, summary?: str, index?: int, total_chapters: int, has_next: bool}`,
+    inputSchema: {
+      project_id: secureProjectIdSchema.describe('The project identifier'),
+      filename: secureFilenameSchema.describe('Knowledge file name (must include .md extension)'),
+      current_chapter_title: secureChapterTitleSchema
+        .optional()
+        .describe('Title of the current chapter (use this OR current_index)'),
+      current_index: chapterIndexSchema
+        .optional()
+        .describe('Zero-based index of current chapter (use this OR current_chapter_title)'),
+    },
+  },
+  async (params: {
+    project_id: string;
+    filename: string;
+    current_chapter_title?: string;
+    current_index?: number;
+  }) => {
+    // Ensure only one of current_chapter_title or current_index is passed
+    const callParams = params.current_chapter_title
+      ? {
+          project_id: params.project_id,
+          filename: params.filename,
+          current_chapter_title: params.current_chapter_title,
+        }
+      : {
+          project_id: params.project_id,
+          filename: params.filename,
+          current_index: params.current_index ?? 0,
+        };
+
+    const result = await chapterHandler.getNextChapterAsync(callParams);
     return {
       content: [
         {
