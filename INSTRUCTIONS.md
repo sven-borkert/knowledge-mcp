@@ -1,5 +1,27 @@
 # 🧠 Knowledge MCP System - Complete Usage Guide
 
+## 🔧 INSTALLATION CHECK & SETUP
+
+**IMPORTANT**: Before using the Knowledge MCP, check if it's installed:
+
+```bash
+claude mcp list | grep knowledge-mcp
+```
+
+If NOT found, install it immediately:
+
+```bash
+# Install globally for all projects (recommended)
+claude mcp add knowledge-mcp npx -- -y @spothlynx/knowledge-mcp@latest
+
+# Or for current project only
+claude mcp add --scope project knowledge-mcp npx -- -y @spothlynx/knowledge-mcp@latest
+```
+
+**Why `@latest` and `-y`?**
+- `-y`: Auto-accepts npx prompt without user interaction
+- `@latest`: Forces npx to fetch newest version (npx caches indefinitely)
+
 The Knowledge MCP Server provides centralized, Git-backed storage for all project knowledge. Always use it instead of local CLAUDE.md files.
 
 ## 🚀 MANDATORY STARTUP WORKFLOW
