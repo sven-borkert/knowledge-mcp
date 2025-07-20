@@ -861,6 +861,7 @@ export class ChapterToolHandler extends BaseHandler {
         index,
       }));
 
+      this.logSuccess('list_chapters', { project_id, filename }, context);
       return this.formatSuccessResponse({
         project_id,
         filename,
@@ -970,6 +971,7 @@ export class ChapterToolHandler extends BaseHandler {
         );
       }
 
+      this.logSuccess('get_chapter', { project_id, filename, chapter_index: targetIndex }, context);
       return this.formatSuccessResponse({
         project_id,
         filename,
@@ -1084,6 +1086,11 @@ export class ChapterToolHandler extends BaseHandler {
       // Check if there's a next chapter
       const nextIdx = currentIdx + 1;
       if (nextIdx >= chapters.length) {
+        this.logSuccess(
+          'get_next_chapter',
+          { project_id, filename, current_index: currentIdx },
+          context
+        );
         return this.formatSuccessResponse({
           project_id,
           filename,
@@ -1095,6 +1102,11 @@ export class ChapterToolHandler extends BaseHandler {
       }
 
       const nextChapter = chapters[nextIdx];
+      this.logSuccess(
+        'get_next_chapter',
+        { project_id, filename, current_index: currentIdx, next_index: nextIdx },
+        context
+      );
       return this.formatSuccessResponse({
         project_id,
         filename,

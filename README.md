@@ -79,119 +79,52 @@ pnpm run dev
 
 ## 🤖 AI Assistant Configuration
 
-### Automatic MCP Usage
+For comprehensive usage instructions, copy the contents of [`INSTRUCTIONS.md`](INSTRUCTIONS.md) to your global instruction file (e.g., `~/.claude/CLAUDE.md`).
 
-Configure your AI assistant to automatically use the Knowledge MCP by adding this to your global instruction file (e.g., `~/.claude/CLAUDE.md`):
+This will enable Claude Code to automatically use the Knowledge MCP for all project knowledge management.
 
-```markdown
-# 🧠 Knowledge MCP Auto-Usage
-
-IMPORTANT: This system uses the Knowledge MCP Server for project knowledge.
-
-## MANDATORY WORKFLOW (Execute at conversation start):
-
-1. ALWAYS call get_project_main(project_id) first to check for existing project knowledge
-2. If project exists: Use the returned instructions
-3. If project doesn't exist: Look for local CLAUDE.md and migrate it with update_project_main
-4. For all subsequent work, use the MCP as the single source of truth
-
-## Key Commands:
-
-- get_project_main - Get project instructions (ALWAYS START HERE)
-- search_knowledge - Find information before asking questions
-- create_knowledge_file - Document new learnings
-- update_chapter - Update existing documentation
-
-NEVER read local CLAUDE.md files directly - always use the Knowledge MCP.
+Knowledge is organized as:
+```
+~/.knowledge-mcp/
+├── index.json                 # Project name mapping
+├── activity.log              # Request logs (gitignored)
+└── projects/
+    └── {project-slug}/       # Auto-detected from git/directory
+        ├── main.md           # Project instructions
+        ├── knowledge/        # Knowledge documents
+        │   ├── api-guide.md
+        │   └── architecture.md
+        └── TODO/             # TODO lists
+            └── 1/            # TODO #1
+                ├── index.md  # TODO metadata
+                └── tasks/    # Individual task files
 ```
 
-### TODO Management Guidelines
+## ⚠️ IMPORTANT CONSTRAINTS
 
-For AI assistants, use TODO features **only when explicitly requested**:
+- Project ID auto-detected from git repo or current directory name
+- All paths are sanitized - no `../` or absolute paths
+- Keywords must be alphanumeric + dots, underscores, hyphens
+- Maximum 50 chapters per document
+- File extension `.md` required for knowledge files
+- Section headers must include `##` prefix (e.g., `"## Configuration"`)
+- All changes auto-commit with descriptive messages
+- Storage syncs with origin/main if git remote configured
 
-```markdown
-## TODO Usage Guidelines for AI Assistants:
+## 🔍 ERROR CODES
 
-DO NOT automatically check or create TODOs. Only use TODO features when the user explicitly:
+Common errors and their meanings:
+- `PROJECT_NOT_FOUND`: Project doesn't exist yet (use update_project_main to create)
+- `DOCUMENT_NOT_FOUND`: Knowledge file not found
+- `FILE_ALREADY_EXISTS`: File/chapter already exists (use update instead)
+- `CHAPTER_NOT_FOUND`: Chapter title not found in document
+- `SECTION_NOT_FOUND`: Section header not found in main.md
+- `TODO_NOT_FOUND`: TODO list doesn't exist
+- `INVALID_INPUT`: Parameters failed validation
+- `FILE_SYSTEM_ERROR`: File operation failed
+- `GIT_ERROR`: Git operation failed
 
-- Asks to "save this plan as a TODO"
-- Says "work on TODO #X" or "continue with the TODO list"
-- Requests to "check my TODOs" or "list TODOs"
-
-When asked to work on a TODO:
-
-1. Get all tasks with get_todo_tasks(project_id, todo_number)
-2. Work through ALL incomplete tasks sequentially
-3. Use get_next_todo_task to identify what to do next
-4. Mark each task complete with complete_todo_task as you finish
-5. Continue until all tasks are done or you encounter a blocker
-
-Example scenarios:
-
-- User: "Save this plan as a TODO" → Create TODO with the plan's steps
-- User: "Work on TODO #1" → Get tasks and complete them all
-- User: "What TODOs do I have?" → List TODOs for the project
-- User: "Help me implement authentication" → DO NOT create a TODO unless asked
-
-### Efficient Chapter Iteration Pattern
-
-When working with large knowledge documents, use these patterns:
-
-1. **List chapters first**:
-```
-
-list_chapters(project_id, filename)
-
-```
-Returns lightweight list of titles and summaries.
-
-2. **Read specific chapter**:
-```
-
-get_chapter(project_id, filename, chapter_title="Introduction")
-
-# or
-
-get_chapter(project_id, filename, chapter_index=0)
-
-```
-
-3. **Sequential iteration**:
-```
-
-# Start with first chapter
-
-chapter = get_chapter(project_id, filename, chapter_index=0)
-
-# Continue through document
-
-while chapter.has_next: # Process current chapter
-process_chapter(chapter)
-
-       # Get next chapter
-       chapter = get_next_chapter(project_id, filename, current_index=chapter.index)
-
-```
-
-4. **Selective reading based on summaries**:
-```
-
-# List all chapters
-
-chapters = list_chapters(project_id, filename)
-
-# Read only chapters matching criteria
-
-for ch in chapters:
-if "API" in ch.summary or "authentication" in ch.title.lower():
-full_chapter = get_chapter(project_id, filename, chapter_title=ch.title) # Process relevant chapter
-
-```
-
-### Performance Benefits
-- `list_chapters` is 10-100x faster than `get_knowledge_file` for large documents
-- `get_chapter` loads only needed content, reducing token usage
-- Sequential iteration prevents loading entire document into memory
+Each error includes a `traceId` for debugging.
 ```
 
 ## 📦 Client-Specific Configuration
