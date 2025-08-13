@@ -84,6 +84,7 @@ For comprehensive usage instructions, copy the contents of [`INSTRUCTIONS.md`](I
 This will enable Claude Code to automatically use the Knowledge MCP for all project knowledge management.
 
 Knowledge is organized as:
+
 ```
 ~/.knowledge-mcp/
 ├── index.json                 # Project name mapping
@@ -114,6 +115,7 @@ Knowledge is organized as:
 ## 🔍 ERROR CODES
 
 Common errors and their meanings:
+
 - `PROJECT_NOT_FOUND`: Project doesn't exist yet (use update_project_main to create)
 - `DOCUMENT_NOT_FOUND`: Knowledge file not found
 - `FILE_ALREADY_EXISTS`: File/chapter already exists (use update instead)
@@ -125,7 +127,8 @@ Common errors and their meanings:
 - `GIT_ERROR`: Git operation failed
 
 Each error includes a `traceId` for debugging.
-```
+
+````
 
 ## 📦 Client-Specific Configuration
 
@@ -140,7 +143,7 @@ claude mcp add --scope project knowledge-mcp npx -- -y @spothlynx/knowledge-mcp@
 
 # For development (using local build)
 claude mcp add knowledge-mcp node "$(pwd)/dist/knowledge-mcp/index.js"
-```
+````
 
 ### Claude Desktop
 

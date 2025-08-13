@@ -3,6 +3,7 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { z } from 'zod';
 
 import { SERVER_CONFIG, logger, STORAGE_PATH } from './config/index.js';
+import { TOOL_DESCRIPTIONS } from './config/toolDescriptions.js';
 import { ChapterToolHandler } from './handlers/ChapterToolHandler.js';
 import { KnowledgeToolHandler } from './handlers/KnowledgeToolHandler.js';
 import { ProjectToolHandler } from './handlers/ProjectToolHandler.js';
@@ -51,10 +52,7 @@ server.registerTool(
   'get_project_main',
   {
     title: 'Get Project Main Instructions',
-    description: `Retrieve main.md content for a project. 
-This tool REPLACES the need to read local CLAUDE.md files. 
-Always use this tool FIRST when starting work on any project.
-Returns: {exists: bool, content: str, error?: str}`,
+    description: TOOL_DESCRIPTIONS.get_project_main,
     inputSchema: {
       project_id: secureProjectIdSchema.describe('The project identifier'),
     },
@@ -73,10 +71,7 @@ server.registerTool(
   'update_project_main',
   {
     title: 'Update Project Main',
-    description: `Create or completely replace main.md content for a project. 
-This tool is used to migrate CLAUDE.md content to MCP when a project doesn't exist yet.
-For partial updates, use update_project_section instead.
-Returns: {success: bool, message?: str, error?: str}`,
+    description: TOOL_DESCRIPTIONS.update_project_main,
     inputSchema: {
       project_id: secureProjectIdSchema.describe('The project identifier'),
       content: secureContentSchema.describe('The new markdown content for main.md'),
@@ -99,10 +94,7 @@ server.registerTool(
   'update_project_section',
   {
     title: 'Update Project Section',
-    description: `Update a specific section within the project main.md file.
-This is more efficient than replacing the entire file when making targeted changes.
-The section_header must match exactly (including "## " prefix).
-Returns: {success: bool, message?: str, error?: str}`,
+    description: TOOL_DESCRIPTIONS.update_project_section,
     inputSchema: {
       project_id: secureProjectIdSchema.describe('The project identifier'),
       section_header: secureSectionHeaderSchema.describe(
@@ -134,9 +126,7 @@ server.registerTool(
   'remove_project_section',
   {
     title: 'Remove Project Section',
-    description: `Remove a specific section from the project main.md file.
-The section_header must match exactly (including "## " prefix).
-Returns: {success: bool, message?: str, error?: str}`,
+    description: TOOL_DESCRIPTIONS.remove_project_section,
     inputSchema: {
       project_id: secureProjectIdSchema.describe('The project identifier'),
       section_header: secureSectionHeaderSchema.describe(
@@ -161,10 +151,7 @@ server.registerTool(
   'add_project_section',
   {
     title: 'Add Project Section',
-    description: `Add a new section to the project main.md file.
-The section can be positioned at the end, or before/after a reference section.
-The section_header must include the "## " prefix.
-Returns: {success: bool, message?: str, error?: str}`,
+    description: TOOL_DESCRIPTIONS.add_project_section,
     inputSchema: {
       project_id: secureProjectIdSchema.describe('The project identifier'),
       section_header: secureSectionHeaderSchema.describe(
@@ -200,10 +187,7 @@ server.registerTool(
   'delete_project',
   {
     title: 'Delete Project',
-    description: `Permanently delete a project and all its content.
-This removes the entire project directory and removes it from the index.
-This action cannot be undone - use with caution.
-Returns: {success: bool, project_id: str, message: str, error?: str}`,
+    description: TOOL_DESCRIPTIONS.delete_project,
     inputSchema: {
       project_id: secureProjectIdSchema.describe('The project identifier to delete'),
     },
@@ -226,10 +210,7 @@ server.registerTool(
   'create_knowledge_file',
   {
     title: 'Create Knowledge File',
-    description: `Create a structured knowledge document with metadata. 
-Document name is slugified for safety (spaces→hyphens). 
-Requires at least one keyword. Chapters must have 'title' and 'content' keys. 
-Returns: {success: bool, document_id?: str, message?: str, error?: str}`,
+    description: TOOL_DESCRIPTIONS.create_knowledge_file,
     inputSchema: {
       project_id: secureProjectIdSchema.describe('The project identifier'),
       filename: secureFilenameSchema.describe(
@@ -275,9 +256,7 @@ server.registerTool(
   'get_knowledge_file',
   {
     title: 'Get Knowledge File',
-    description: `Retrieve the complete content of a knowledge document including metadata and all chapters. 
-This tool enables full document download/backup functionality. 
-Returns: {success: bool, document?: object, error?: str}`,
+    description: TOOL_DESCRIPTIONS.get_knowledge_file,
     inputSchema: {
       project_id: secureProjectIdSchema.describe('The project identifier'),
       filename: secureFilenameSchema.describe('Knowledge file name (must include .md extension)'),
@@ -300,8 +279,7 @@ server.registerTool(
   'delete_knowledge_file',
   {
     title: 'Delete Knowledge File',
-    description: `Delete a knowledge document permanently. This action cannot be undone. 
-Returns: {success: bool, message?: str, error?: str}`,
+    description: TOOL_DESCRIPTIONS.delete_knowledge_file,
     inputSchema: {
       project_id: secureProjectIdSchema.describe('The project identifier'),
       filename: secureFilenameSchema.describe('Full filename including .md extension'),
@@ -325,10 +303,7 @@ server.registerTool(
   'search_knowledge',
   {
     title: 'Search Knowledge',
-    description: `Search project knowledge documents for keywords (case-insensitive). 
-Returns document-centric results with matching chapters grouped by document. 
-Searches in: document body, chapter titles, chapter content, and pre-chapter content. 
-Returns: {success: bool, total_documents: int, total_matches: int, results: [...], error?: str}`,
+    description: TOOL_DESCRIPTIONS.search_knowledge,
     inputSchema: {
       project_id: secureProjectIdSchema.describe('The project identifier'),
       query: secureSearchQuerySchema.describe('Space-separated keywords to search for'),
@@ -352,10 +327,7 @@ server.registerTool(
   'update_chapter',
   {
     title: 'Update Chapter',
-    description: `Update a specific chapter within a knowledge document by title (exact match required). 
-Preserves document structure, metadata, and other chapters. 
-Chapter title must match exactly including case. 
-Returns: {success: bool, message?: str, error?: str}`,
+    description: TOOL_DESCRIPTIONS.update_chapter,
     inputSchema: {
       project_id: secureProjectIdSchema.describe('The project identifier'),
       filename: secureFilenameSchema.describe('Knowledge file name (must include .md extension)'),
@@ -393,9 +365,7 @@ server.registerTool(
   'remove_chapter',
   {
     title: 'Remove Chapter',
-    description: `Remove a specific chapter from a knowledge document by title. 
-Chapter title must match exactly including case. 
-Returns: {success: bool, message?: str, error?: str}`,
+    description: TOOL_DESCRIPTIONS.remove_chapter,
     inputSchema: {
       project_id: secureProjectIdSchema.describe('The project identifier'),
       filename: secureFilenameSchema.describe('Knowledge file name (must include .md extension)'),
@@ -419,10 +389,7 @@ server.registerTool(
   'add_chapter',
   {
     title: 'Add Chapter',
-    description: `Add a new chapter to a knowledge document.
-The chapter can be positioned at the end, or before/after a reference chapter.
-Chapter title must not already exist in the document.
-Returns: {success: bool, message?: str, error?: str}`,
+    description: TOOL_DESCRIPTIONS.add_chapter,
     inputSchema: {
       project_id: secureProjectIdSchema.describe('The project identifier'),
       filename: secureFilenameSchema.describe('Knowledge file name (must include .md extension)'),
@@ -461,9 +428,7 @@ server.registerTool(
   'list_chapters',
   {
     title: 'List Chapters',
-    description: `List all chapters in a knowledge document with titles and summaries only.
-This is a lightweight way to see document structure without loading all content.
-Returns: {success: bool, project_id: str, filename: str, total_chapters: int, chapters: array}`,
+    description: TOOL_DESCRIPTIONS.list_chapters,
     inputSchema: {
       project_id: secureProjectIdSchema.describe('The project identifier'),
       filename: secureFilenameSchema.describe('Knowledge file name (must include .md extension)'),
@@ -486,9 +451,7 @@ server.registerTool(
   'get_chapter',
   {
     title: 'Get Chapter',
-    description: `Retrieve a single chapter's content by title or index.
-Specify either chapter_title OR chapter_index (not both).
-Returns: {success: bool, title: str, content: str, summary: str, index: int, total_chapters: int, has_next: bool, has_previous: bool}`,
+    description: TOOL_DESCRIPTIONS.get_chapter,
     inputSchema: {
       project_id: secureProjectIdSchema.describe('The project identifier'),
       filename: secureFilenameSchema.describe('Knowledge file name (must include .md extension)'),
@@ -535,9 +498,7 @@ server.registerTool(
   'get_next_chapter',
   {
     title: 'Get Next Chapter',
-    description: `Get the next chapter after the current one.
-Specify either current_chapter_title OR current_index (not both).
-Returns: {success: bool, title?: str, content?: str, summary?: str, index?: int, total_chapters: int, has_next: bool}`,
+    description: TOOL_DESCRIPTIONS.get_next_chapter,
     inputSchema: {
       project_id: secureProjectIdSchema.describe('The project identifier'),
       filename: secureFilenameSchema.describe('Knowledge file name (must include .md extension)'),
@@ -585,8 +546,7 @@ server.registerTool(
   'get_server_info',
   {
     title: 'Get Server Information',
-    description: `Shows server information including version from package.json.
-Returns: {success: bool, name: str, version: str, storage_path: str, description: str}`,
+    description: TOOL_DESCRIPTIONS.get_server_info,
     inputSchema: {},
   },
   async () => {
@@ -606,8 +566,7 @@ server.registerTool(
   'get_storage_status',
   {
     title: 'Get Storage Status',
-    description: `Shows git status of the knowledge datastore.
-Returns: {success: bool, storage_path: str, has_changes: bool, current_branch: str, last_commit: str, remote_status: str, uncommitted_files: int, status_details: str}`,
+    description: TOOL_DESCRIPTIONS.get_storage_status,
     inputSchema: {},
   },
   async () => {
@@ -627,8 +586,7 @@ server.registerTool(
   'sync_storage',
   {
     title: 'Sync Storage',
-    description: `Force git add, commit, and push all changes in the knowledge datastore.
-Returns: {success: bool, message: str, files_committed: int, pushed: bool, push_error?: str, commit_message: str}`,
+    description: TOOL_DESCRIPTIONS.sync_storage,
     inputSchema: {},
   },
   async () => {
@@ -649,8 +607,7 @@ server.registerTool(
   'list_todos',
   {
     title: 'List TODOs',
-    description: `List all TODO lists in a project with their completion status.
-Returns: {success: bool, todos: [...], error?: str}`,
+    description: TOOL_DESCRIPTIONS.list_todos,
     inputSchema: {
       project_id: secureProjectIdSchema.describe('The project identifier'),
     },
@@ -672,9 +629,7 @@ server.registerTool(
   'create_todo',
   {
     title: 'Create TODO',
-    description: `Create a new TODO list with optional initial tasks.
-Tasks must be objects with title and content properties for full markdown support.
-Returns: {success: bool, todo_number: int, message: str, error?: str}`,
+    description: TOOL_DESCRIPTIONS.create_todo,
     inputSchema: {
       project_id: secureProjectIdSchema.describe('The project identifier'),
       description: secureTodoDescriptionSchema.describe('Description of the TODO list'),
@@ -706,9 +661,7 @@ server.registerTool(
   'add_todo_task',
   {
     title: 'Add TODO Task',
-    description: `Add a new task to an existing TODO list with full markdown support.
-Task content can include code blocks, lists, links, and any markdown formatting.
-Returns: {success: bool, task_number: int, message: str, error?: str}`,
+    description: TOOL_DESCRIPTIONS.add_todo_task,
     inputSchema: {
       project_id: secureProjectIdSchema.describe('The project identifier'),
       todo_number: secureTodoNumberSchema.describe('The TODO list number'),
@@ -735,8 +688,7 @@ server.registerTool(
   'remove_todo_task',
   {
     title: 'Remove TODO Task',
-    description: `Remove a task from a TODO list.
-Returns: {success: bool, message: str, error?: str}`,
+    description: TOOL_DESCRIPTIONS.remove_todo_task,
     inputSchema: {
       project_id: secureProjectIdSchema.describe('The project identifier'),
       todo_number: secureTodoNumberSchema.describe('The TODO list number'),
@@ -760,8 +712,7 @@ server.registerTool(
   'complete_todo_task',
   {
     title: 'Complete TODO Task',
-    description: `Mark a task as completed in a TODO list.
-Returns: {success: bool, message: str, error?: str}`,
+    description: TOOL_DESCRIPTIONS.complete_todo_task,
     inputSchema: {
       project_id: secureProjectIdSchema.describe('The project identifier'),
       todo_number: secureTodoNumberSchema.describe('The TODO list number'),
@@ -789,8 +740,7 @@ server.registerTool(
   'get_next_todo_task',
   {
     title: 'Get Next TODO Task',
-    description: `Get the next incomplete task in a TODO list.
-Returns: {success: bool, task?: {number: int, description: str}, message?: str, error?: str}`,
+    description: TOOL_DESCRIPTIONS.get_next_todo_task,
     inputSchema: {
       project_id: secureProjectIdSchema.describe('The project identifier'),
       todo_number: secureTodoNumberSchema.describe('The TODO list number'),
@@ -813,8 +763,7 @@ server.registerTool(
   'get_todo_tasks',
   {
     title: 'Get TODO Tasks',
-    description: `Get all tasks in a TODO list with their completion status.
-Returns: {success: bool, todo: {...}, tasks: [...], error?: str}`,
+    description: TOOL_DESCRIPTIONS.get_todo_tasks,
     inputSchema: {
       project_id: secureProjectIdSchema.describe('The project identifier'),
       todo_number: secureTodoNumberSchema.describe('The TODO list number'),
@@ -837,8 +786,7 @@ server.registerTool(
   'delete_todo',
   {
     title: 'Delete TODO',
-    description: `Delete an entire TODO list and all its tasks.
-Returns: {success: bool, message: str, error?: str}`,
+    description: TOOL_DESCRIPTIONS.delete_todo,
     inputSchema: {
       project_id: secureProjectIdSchema.describe('The project identifier'),
       todo_number: secureTodoNumberSchema.describe('The TODO list number to delete'),
